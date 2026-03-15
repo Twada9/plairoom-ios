@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Supabase
 
 /// Supabase API のエラー型
 enum SupabaseError: Error, Sendable {
@@ -67,6 +68,54 @@ struct EdgeFunctionErrorResponse: Decodable, Sendable {
 struct EdgeFunctionErrorDetail: Decodable, Sendable {
     let type: String
     let message: String
+}
+
+// MARK: - SDK Error Mapping
+
+extension SupabaseError {
+    /// Supabase Swift SDK が throw するエラーを SupabaseError にマッピングする
+    ///
+    /// - `FunctionsError.httpError` → Edge Function のレスポンスをパースして `edgeFunctionError` または `invalidResponse`
+    /// - `PostgrestError`           → `restError`
+    /// - `AuthError`                → `unauthorized` または `restError`
+    /// - その他                     → `unknown`
+    static func from(_ error: Error) -> SupabaseError {
+        // すでに SupabaseError ならそのまま返す
+        if let e = error as? SupabaseError { return e }
+
+        // Edge Function エラー
+        if let e = error as? FunctionsError {
+            switch e {
+            case .httpError(let code, let data):
+                // レスポンスボディに {"error": {"type": "...", "message": "..."}} が含まれる場合はパース
+                if let edgeError = try? JSONDecoder().decode(EdgeFunctionErrorResponse.self, from: data) {
+                    let errorType = EdgeFunctionErrorType(rawValue: edgeError.error.type) ?? .unknown
+                    return .edgeFunctionError(type: errorType, message: edgeError.error.message)
+                }
+                return .invalidResponse(statusCode: code)
+            case .relayError:
+                return .networkError(e)
+            @unknown default:
+                return .unknown(e)
+            }
+        }
+
+        // PostgREST エラー
+        if let e = error as? PostgrestError {
+            return .restError(
+                code: e.code ?? "",
+                message: e.message,
+                details: e.detail
+            )
+        }
+
+        // Auth エラー
+        if error is AuthError {
+            return .unauthorized
+        }
+
+        return .unknown(error)
+    }
 }
 
 // MARK: - LocalizedError

@@ -16,19 +16,9 @@ struct SupabaseConfig: Sendable {
     /// Supabase Anonymous Key (公開API用)
     let anonKey: String
 
-    /// REST API Base URL
-    var restBaseURL: URL {
-        URL(string: "https://\(projectRef).supabase.co/rest/v1")!
-    }
-
-    /// Auth API Base URL
-    var authBaseURL: URL {
-        URL(string: "https://\(projectRef).supabase.co/auth/v1")!
-    }
-
-    /// Edge Functions Base URL
-    var functionsBaseURL: URL {
-        URL(string: "https://\(projectRef).supabase.co/functions/v1")!
+    /// Supabase SDK に渡すプロジェクト URL
+    var projectURL: URL {
+        URL(string: "https://\(projectRef).supabase.co")!
     }
 }
 
