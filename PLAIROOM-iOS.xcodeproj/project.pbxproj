@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1A95CAE22F65977A00E9B4EC /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 1A95CADD2F65977A00E9B4EC /* README.md */; };
+		1A95CAEE2F65A2BD00E9B4EC /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		1A4DBDB12F6568AD00557C76 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A95CAEE2F65A2BD00E9B4EC /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +118,7 @@
 			);
 			name = "PLAIROOM-iOS";
 			packageProductDependencies = (
+				1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */,
 			);
 			productName = "PLAIROOM-iOS";
 			productReference = 1A4DBDA32F6568AC00557C76 /* PLAIROOM-iOS.app */;
@@ -195,6 +202,9 @@
 			);
 			mainGroup = 1A4DBD9A2F6568AC00557C76;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A4DBDA42F6568AC00557C76 /* Products */;
 			projectDirPath = "";
@@ -212,6 +222,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A95CAE22F65977A00E9B4EC /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -578,6 +589,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.25.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1A4DBD9B2F6568AC00557C76 /* Project object */;
 }
