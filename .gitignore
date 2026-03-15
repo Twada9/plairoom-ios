@@ -145,4 +145,8 @@ Pods/
 ## 親ディレクトリ
 /..
 settings.local.json
-Secrets.xcconfig
+
+## Environment Variables
+# Secrets.xcconfig には機密情報が含まれるため Git に含めない
+Config/Secrets.xcconfig
+
