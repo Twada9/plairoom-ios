@@ -8,6 +8,20 @@
 import Foundation
 import Dependencies
 
+/// HTTP メソッド列挙型
+enum HTTPMethod: String {
+    case get = "GET"
+    case post = "POST"
+    case patch = "PATCH"
+    case delete = "DELETE"
+}
+
+extension URLRequest {
+    mutating func setHTTPMethod(_ method: HTTPMethod) {
+        self.httpMethod = method.rawValue
+    }
+}
+
 /// Supabase API クライアント
 ///
 /// URLSession と Swift Concurrency を使用した Supabase 専用クライアント
@@ -64,7 +78,7 @@ actor SupabaseClient {
         }
 
         var request = URLRequest(url: components.url!)
-        request.httpMethod = "GET"
+        await request.setHTTPMethod(.get)
         request.setSupabaseHeaders(
             config: config,
             token: requiresAuth ? jwtToken : nil,
@@ -94,8 +108,8 @@ actor SupabaseClient {
     ) async throws -> T {
         let url = await config.restBaseURL.appendingPathComponent(endpoint)
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.httpBody = try JSONEncoder.snakeCaseEncoder.encode(body)
+        await request.setHTTPMethod(.post)
+        request.httpBody = try await JSONEncoder.snakeCaseEncoder.encode(body)
         request.setSupabaseHeaders(
             config: config,
             token: requiresAuth ? jwtToken : nil
@@ -134,8 +148,8 @@ actor SupabaseClient {
         }
 
         var request = URLRequest(url: components.url!)
-        request.httpMethod = "PATCH"
-        request.httpBody = try JSONEncoder.snakeCaseEncoder.encode(body)
+        await request.setHTTPMethod(.patch)
+        request.httpBody = try await JSONEncoder.snakeCaseEncoder.encode(body)
         request.setSupabaseHeaders(
             config: config,
             token: requiresAuth ? jwtToken : nil
@@ -169,7 +183,7 @@ actor SupabaseClient {
         }
 
         var request = URLRequest(url: components.url!)
-        request.httpMethod = "DELETE"
+        await request.setHTTPMethod(.delete)
         request.setSupabaseHeaders(
             config: config,
             token: requiresAuth ? jwtToken : nil,
@@ -208,7 +222,7 @@ actor SupabaseClient {
         let url = await config.authBaseURL.appendingPathComponent("/signup")
         print(url)
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        await request.setHTTPMethod(.post)
         request.setSupabaseHeaders(config: config)
 
         let body: [String: Any] = [
@@ -233,11 +247,11 @@ actor SupabaseClient {
         components.queryItems = [URLQueryItem(name: "grant_type", value: "password")]
 
         var request = URLRequest(url: components.url!)
-        request.httpMethod = "POST"
+        await request.setHTTPMethod(.post)
         request.setSupabaseHeaders(config: config)
 
         let body = ["email": email, "password": password]
-        request.httpBody = try JSONEncoder.snakeCaseEncoder.encode(body)
+        request.httpBody = try await JSONEncoder.snakeCaseEncoder.encode(body)
 
         return try await performRequest(request)
     }
@@ -250,7 +264,7 @@ actor SupabaseClient {
 
         let url = await config.authBaseURL.appendingPathComponent("/logout")
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        await request.setHTTPMethod(.post)
         request.setSupabaseHeaders(config: config, token: token, contentType: nil)
 
         let (_, response) = try await session.data(for: request)
@@ -275,11 +289,11 @@ actor SupabaseClient {
         components.queryItems = [URLQueryItem(name: "grant_type", value: "refresh_token")]
 
         var request = URLRequest(url: components.url!)
-        request.httpMethod = "POST"
+        await request.setHTTPMethod(.post)
         request.setSupabaseHeaders(config: config)
 
         let body = ["refresh_token": refreshToken]
-        request.httpBody = try JSONEncoder.snakeCaseEncoder.encode(body)
+        request.httpBody = try await JSONEncoder.snakeCaseEncoder.encode(body)
 
         return try await performRequest(request)
     }
@@ -302,7 +316,7 @@ actor SupabaseClient {
 
         let url = await config.functionsBaseURL.appendingPathComponent(functionName)
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        await request.setHTTPMethod(.post)
         request.setSupabaseHeaders(config: config, token: token)
         request.httpBody = try JSONEncoder.snakeCaseEncoder.encode(body)
 
@@ -320,7 +334,7 @@ actor SupabaseClient {
 
         let url = await config.functionsBaseURL.appendingPathComponent(functionName)
         var request = URLRequest(url: url)
-        request.httpMethod = "GET"
+        await request.setHTTPMethod(.get)
         request.setSupabaseHeaders(config: config, token: token, contentType: nil)
 
         return try await performRequest(request)
@@ -342,7 +356,7 @@ actor SupabaseClient {
             }
 
             do {
-                return try JSONDecoder.snakeCaseDecoder.decode(T.self, from: data)
+                return try await JSONDecoder.snakeCaseDecoder.decode(T.self, from: data)
             } catch {
                 throw SupabaseError.decodingError(error)
             }
