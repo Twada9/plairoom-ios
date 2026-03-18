@@ -30,7 +30,14 @@ struct RoomListFeature {
         var loadState: LoadState = .loading
         var rooms: [Room] = []
         var errorMessage: String? = nil
-        /// ルーム詳細へ遷移するルームID（feature/roomdetail で実装）
+        /// リトライ回数（loadFailed → error の判定に使用）
+        var retryCount: Int = 0
+        /// ログイン済みかどうか（AuthModal 表示判定に使用）
+        var isAuthenticated: Bool = false
+        /// 認証モーダル表示フラグ
+        var isAuthModalPresented: Bool = false
+        var auth: AuthFeature.State? = nil
+        /// ルーム詳細へ遷移するルームID（実装時にRoomDetailFeatureに接続）
         var selectedRoomID: String? = nil
     }
 
@@ -42,6 +49,11 @@ struct RoomListFeature {
         case retryTapped
         case cancelErrorTapped
         case roomTapped(Room)
+        // 認証モーダル
+        case authModalDismissed
+        case auth(AuthFeature.Action)
+        // ログアウト通知受け取り（AppFeatureから）
+        case setAuthenticated(Bool)
     }
 
     // MARK: - Dependencies
@@ -94,7 +106,33 @@ struct RoomListFeature {
                 // TODO: RoomDetailFeature への遷移（feature/roomdetail で実装）
                 state.selectedRoomID = room.id
                 return .none
+
+            case .setAuthenticated(let value):
+                state.isAuthenticated = value
+                return .none
+
+            case .authModalDismissed:
+                state.isAuthModalPresented = false
+                state.auth = nil
+                return .none
+
+            case .auth(.delegate(.authSucceeded)):
+                state.isAuthenticated = true
+                state.isAuthModalPresented = false
+                state.auth = nil
+                return .none
+
+            case .auth(.delegate(.cancelled)):
+                state.isAuthModalPresented = false
+                state.auth = nil
+                return .none
+
+            case .auth:
+                return .none
             }
+        }
+        .ifLet(\.auth, action: \.auth) {
+            AuthFeature()
         }
     }
 }

@@ -107,6 +107,7 @@ struct AppFeature {
                 return .none
             case .showAuthView:
                 state.auth = AuthFeature.State()
+                
                 return .none
             case .onDismissAuthView:
                 state.$showAuthViewTrigger.withLock { $0 = false }
