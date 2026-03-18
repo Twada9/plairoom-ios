@@ -29,7 +29,7 @@ struct AppFeature {
         var isAuthenticated: Bool = false
         /// ホーム画面（RoomList）
         var roomList: RoomListFeature.State = RoomListFeature.State()
-        /// 認証モーダル（アプリ全体で共通。nil のとき非表示、値があるとき sheet 表示）
+        /// 認証モーダル（未ログイン時またはゲストが認証が必要な操作をした時に表示）
         var auth: AuthFeature.State? = nil
     }
 
@@ -60,6 +60,7 @@ struct AppFeature {
                 let isAuthenticated = authRepository.currentUser() != nil
                 state.isAuthenticated = isAuthenticated
                 state.isLaunching = false
+                state.roomList.isAuthenticated = isAuthenticated
                 if !isAuthenticated {
                     // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
                     state.auth = AuthFeature.State()
@@ -69,6 +70,7 @@ struct AppFeature {
             case .auth(.delegate(.authSucceeded)):
                 state.isAuthenticated = true
                 state.auth = nil
+                state.roomList.isAuthenticated = true
                 return .none
 
             case .auth(.delegate(.cancelled)):
