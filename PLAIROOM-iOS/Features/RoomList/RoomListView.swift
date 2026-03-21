@@ -93,10 +93,11 @@ struct RoomListView: View {
                 ScrollView {
                     LazyVStack(spacing: 12) {
                         ForEach(store.rooms) { room in
-                            RoomCard(room: room)
-                                .onTapGesture {
-                                    store.send(.roomTapped(room))
-                                }
+                            Button(action: {
+                                store.send(.roomTapped(room))
+                            }, label: {
+                                RoomCard(room: room)
+                            })
                         }
                     }
                     .padding(.horizontal, 16)
