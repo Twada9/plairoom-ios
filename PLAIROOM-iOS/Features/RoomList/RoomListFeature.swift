@@ -79,14 +79,15 @@ struct RoomListFeature {
                 return .none
 
             case .roomsResponse(.failure(let error)):
+                let supabaseError = SupabaseError.from(error)
                 if state.loadState == .loadFailed {
                     // 2回目の失敗 → error 状態
                     state.loadState = .error
-                    state.errorMessage = error.localizedDescription
+                    state.errorMessage = supabaseError.userMessage
                 } else {
                     // 1回目の失敗 → loadFailed 状態
                     state.loadState = .loadFailed
-                    state.errorMessage = error.localizedDescription
+                    state.errorMessage = supabaseError.userMessage
                     state.retryCount += 1
                 }
                 return .none
