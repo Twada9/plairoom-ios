@@ -30,8 +30,6 @@ struct RoomListFeature {
         var loadState: LoadState = .loading
         var rooms: [Room] = []
         var errorMessage: String? = nil
-        /// リトライ回数（loadFailed → error の判定に使用）
-        var retryCount: Int = 0
         /// ログイン済みかどうか（AuthModal 表示判定に使用）
         var isAuthenticated: Bool = false
         
