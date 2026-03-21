@@ -28,7 +28,6 @@ struct RoomDetailFeature {
         case loading
         case idle
         case loadFailed
-        case error
     }
 
     // MARK: - State
@@ -39,8 +38,8 @@ struct RoomDetailFeature {
         var loadState: LoadState = .loading
         var contents: [ContentItem] = []
         var likedContentIds: Set<String> = []
+        var likingContentIds: Set<String> = []
         var errorMessage: String? = nil
-        var retryCount: Int = 0
     }
 
     // MARK: - Action
@@ -68,7 +67,7 @@ struct RoomDetailFeature {
 
     // MARK: - Body
 
-    var body: some ReducerOf<Self> {
+    var body: some Reducer<State, Action> {
         Reduce { state, action in
             switch action {
 
@@ -79,7 +78,6 @@ struct RoomDetailFeature {
             case .contentsResponse(.success(let contents)):
                 state.contents = contents
                 state.loadState = .idle
-                state.retryCount = 0
                 // いいね状態を並行取得
                 let ids = contents.map(\.id)
                 let contentType = state.room.contentType
@@ -98,14 +96,8 @@ struct RoomDetailFeature {
                 }
 
             case .contentsResponse(.failure(let error)):
-                if state.loadState == .loadFailed {
-                    state.loadState = .error
-                    state.errorMessage = error.localizedDescription
-                } else {
-                    state.loadState = .loadFailed
-                    state.errorMessage = error.localizedDescription
-                    state.retryCount += 1
-                }
+                state.loadState = .loadFailed
+                state.errorMessage = error.localizedDescription
                 return .none
 
             case .likedStatusResponse(.success(let ids)):
@@ -124,8 +116,14 @@ struct RoomDetailFeature {
                 return .none
 
             case .likeButtonTapped(let content):
+                // 通信中の場合は早期return
+                guard !state.likingContentIds.contains(content.id) else {
+                    return .none
+                }
+
+                state.likingContentIds.insert(content.id)
                 let isLiking = !state.likedContentIds.contains(content.id)
-                // 楽観的 UI 更新
+                // like UI 更新
                 if isLiking {
                     state.likedContentIds.insert(content.id)
                     if let idx = state.contents.firstIndex(where: { $0.id == content.id }) {
@@ -169,11 +167,13 @@ struct RoomDetailFeature {
                     ))
                 }
 
-            case .likeResponse(.success, _, _):
+            case .likeResponse(.success, let contentId, _):
+                state.likingContentIds.remove(contentId)
                 return .none
 
             case .likeResponse(.failure(let error), let contentId, let isLiking):
-                // 楽観的 UI を巻き戻す
+                state.likingContentIds.remove(contentId)
+                // like UI を巻き戻す
                 if isLiking {
                     state.likedContentIds.remove(contentId)
                     if let idx = state.contents.firstIndex(where: { $0.id == contentId }) {
