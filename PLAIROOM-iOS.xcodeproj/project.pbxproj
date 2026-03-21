@@ -46,7 +46,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		1AAE17032F6639BE003241AB /* Exceptions for "PLAIROOM-iOS" folder in "PLAIROOM-iOS" target */ = {
+		1A883B2D2F6E3F41006E0CA4 /* Exceptions for "PLAIROOM-iOS" folder in "PLAIROOM-iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -59,7 +59,7 @@
 		1A4DBDA52F6568AC00557C76 /* PLAIROOM-iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				1AAE17032F6639BE003241AB /* Exceptions for "PLAIROOM-iOS" folder in "PLAIROOM-iOS" target */,
+				1A883B2D2F6E3F41006E0CA4 /* Exceptions for "PLAIROOM-iOS" folder in "PLAIROOM-iOS" target */,
 			);
 			path = "PLAIROOM-iOS";
 			sourceTree = "<group>";

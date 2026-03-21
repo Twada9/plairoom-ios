@@ -17,10 +17,10 @@ enum SupabaseError: Error, Sendable {
     case edgeFunctionError(type: EdgeFunctionErrorType, message: String)
 
     /// ネットワークエラー
-    case networkError(Error)
+    case networkError(message: String)
 
     /// デコードエラー
-    case decodingError(Error)
+    case decodingError(message: String)
 
     /// 不正なレスポンス
     case invalidResponse(statusCode: Int)
@@ -29,7 +29,7 @@ enum SupabaseError: Error, Sendable {
     case unauthorized
 
     /// その他のエラー
-    case unknown(Error)
+    case unknown(message: String)
 }
 
 /// Edge Function のエラー種別
@@ -94,9 +94,9 @@ extension SupabaseError {
                 }
                 return .invalidResponse(statusCode: code)
             case .relayError:
-                return .networkError(e)
+                return .networkError(message: e.localizedDescription)
             @unknown default:
-                return .unknown(e)
+                return .unknown(message: e.localizedDescription)
             }
         }
 
@@ -114,7 +114,7 @@ extension SupabaseError {
             return .unauthorized
         }
 
-        return .unknown(error)
+        return .unknown(message: error.localizedDescription)
     }
 }
 
@@ -127,16 +127,16 @@ extension SupabaseError: LocalizedError {
             return "Supabase Error [\(code)]: \(message)"
         case .edgeFunctionError(let type, let message):
             return "Edge Function Error [\(type.rawValue)]: \(message)"
-        case .networkError(let error):
-            return "Network Error: \(error.localizedDescription)"
-        case .decodingError(let error):
-            return "Decoding Error: \(error.localizedDescription)"
+        case .networkError(let message):
+            return "Network Error: \(message)"
+        case .decodingError(let message):
+            return "Decoding Error: \(message)"
         case .invalidResponse(let statusCode):
             return "Invalid Response: HTTP \(statusCode)"
         case .unauthorized:
             return "Unauthorized: JWT token is missing or invalid"
-        case .unknown(let error):
-            return "Unknown Error: \(error.localizedDescription)"
+        case .unknown(let message):
+            return "Unknown Error: \(message)"
         }
     }
 }
