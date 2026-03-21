@@ -122,7 +122,7 @@ private struct ContentCard: View {
     let isLiked: Bool
     /// 連打防止用。通信中かどうか
     let isLiking: Bool
-    let contentType: String
+    let contentType: ContentType
     let onLikeTapped: () -> Void
 
     var body: some View {
@@ -170,7 +170,7 @@ private struct ContentCard: View {
 
     @ViewBuilder
     private var thumbnailView: some View {
-        if contentType == "image" {
+        if contentType == .image {
             if let urlStr = content.fileUrl, let url = URL(string: urlStr) {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()
@@ -244,7 +244,7 @@ private struct ContentCard: View {
                     description: "AIで夏の風景を生成して競おう",
                     basePrompt: "summer landscape",
                     roomType: "battle",
-                    contentType: "image",
+                    contentType: .image,
                     createdAt: "2026-03-14T00:00:00Z"
                 ),
                 loadState: .idle,

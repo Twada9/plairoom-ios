@@ -30,14 +30,15 @@ private enum RoomRepositoryKey: DependencyKey {
                     .order("created_at", ascending: false)
                     .execute()
                     .value
-                return dtos.map { dto in
-                    Room(
+                return try dtos.map { dto in
+                    let contentType = try ContentType(value: dto.contentType)
+                    return Room(
                         id: dto.id,
                         title: dto.title,
                         description: dto.description,
                         basePrompt: dto.basePrompt,
                         roomType: dto.roomType,
-                        contentType: dto.contentType,
+                        contentType: contentType,
                         createdAt: dto.createdAt
                     )
                 }
