@@ -144,3 +144,5 @@ Pods/
 
 ## 親ディレクトリ
 /..
+settings.local.json
+Secrets.xcconfig
