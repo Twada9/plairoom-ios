@@ -8,19 +8,47 @@ import Foundation
 internal import PostgREST
 import Supabase
 
+// MARK: - ContentType
+
+enum ContentType: String, Sendable {
+    case image
+    case music
+
+    var tableName: String {
+        switch self {
+        case .image: return "image_contents"
+        case .music: return "music_contents"
+        }
+    }
+
+    init(rawValue: String) throws {
+        switch rawValue {
+        case "image": self = .image
+        case "music": self = .music
+        default: throw ContentError.invalidContentType(rawValue)
+        }
+    }
+}
+
+// MARK: - ContentError
+
+enum ContentError: Error {
+    case invalidContentType(String)
+}
+
 // MARK: - ContentRepository
 
 struct ContentRepository: Sendable {
     /// ルームのコンテンツ一覧取得（image_contents / music_contents）
-    var fetchContents: @Sendable (_ roomId: String, _ contentType: String) async throws -> [ContentItem]
+    var fetchContents: @Sendable (_ roomId: String, _ contentType: ContentType) async throws -> [ContentItem]
     /// いいね追加
-    var likeContent: @Sendable (_ contentId: String, _ contentType: String) async throws -> Void
+    var likeContent: @Sendable (_ contentId: String, _ contentType: ContentType) async throws -> Void
     /// いいね削除
-    var unlikeContent: @Sendable (_ contentId: String, _ contentType: String) async throws -> Void
+    var unlikeContent: @Sendable (_ contentId: String, _ contentType: ContentType) async throws -> Void
     /// 自分がいいね済みか確認
-    var isLiked: @Sendable (_ contentId: String, _ contentType: String) async throws -> Bool
+    var isLiked: @Sendable (_ contentId: String, _ contentType: ContentType) async throws -> Bool
     /// コンテンツのステータスを更新（投稿確定 / やり直し）
-    var patchStatus: @Sendable (_ contentId: String, _ contentType: String, _ status: ContentStatus) async throws -> Void
+    var patchStatus: @Sendable (_ contentId: String, _ contentType: ContentType, _ status: ContentStatus) async throws -> Void
 }
 
 // MARK: - DependencyKey
@@ -30,9 +58,8 @@ private enum ContentRepositoryKey: DependencyKey {
         return ContentRepository(
             fetchContents: { roomId, contentType in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
-                let table = contentType == "image" ? "image_contents" : "music_contents"
                 let dtos: [ContentItemDTO] = try await client
-                    .from(table)
+                    .from(contentType.tableName)
                     .select("*,likes(count),profiles(name,avatar_url)")
                     .eq("room_id", value: roomId)
                     .order("created_at", ascending: false)
@@ -49,7 +76,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .from("likes")
                     .insert([
                         "user_id": userId,
-                        "content_type": contentType,
+                        "content_type": contentType.rawValue,
                         "content_id": contentId
                     ])
                     .execute()
@@ -63,7 +90,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .from("likes")
                     .delete()
                     .eq("user_id", value: userId)
-                    .eq("content_type", value: contentType)
+                    .eq("content_type", value: contentType.rawValue)
                     .eq("content_id", value: contentId)
                     .execute()
             },
@@ -76,7 +103,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .from("likes")
                     .select("id")
                     .eq("user_id", value: userId)
-                    .eq("content_type", value: contentType)
+                    .eq("content_type", value: contentType.rawValue)
                     .eq("content_id", value: contentId)
                     .execute()
                     .value
@@ -84,9 +111,8 @@ private enum ContentRepositoryKey: DependencyKey {
             },
             patchStatus: { contentId, contentType, status in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
-                let table = contentType == "image" ? "image_contents" : "music_contents"
                 try await client
-                    .from(table)
+                    .from(contentType.tableName)
                     .update(["status": status.rawValue])
                     .eq("id", value: contentId)
                     .execute()
