@@ -9,9 +9,9 @@ import Foundation
 
 extension JSONDecoder {
     /// スネークケース↔キャメルケース自動変換を行うデコーダー
-    static let snakeCaseDecoder: JSONDecoder = {
+    static var snakeCaseDecoder: JSONDecoder {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return decoder
-    }()
+    }
 }
