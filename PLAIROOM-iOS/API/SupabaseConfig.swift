@@ -18,7 +18,13 @@ struct SupabaseConfig: Sendable {
 
     /// Supabase SDK に渡すプロジェクト URL
     var projectURL: URL {
-        URL(string: "https://\(projectRef).supabase.co")!
+        guard let url = URL(string: "https://\(projectRef).supabase.co") else {
+            fatalError(
+                "Invalid Supabase project URL for projectRef: '\(projectRef)'. "
+                + "Ensure SUPABASE_PROJECT_REF in Info.plist is a valid URL component."
+            )
+        }
+        return url
     }
 }
 
@@ -35,10 +41,27 @@ extension DependencyValues {
 private enum SupabaseConfigKey: DependencyKey {
     /// 本番環境用の設定値（Info.plistから読み込む）
     @MainActor
-    static let liveValue = SupabaseConfig(
-        projectRef: Bundle.main.infoDictionary?["SUPABASE_PROJECT_REF"] as? String ?? "",
-        anonKey: Bundle.main.infoDictionary?["SUPABASE_ANON_KEY"] as? String ?? ""
-    )
+    static let liveValue: SupabaseConfig = {
+        guard
+            let projectRef = Bundle.main.infoDictionary?["SUPABASE_PROJECT_REF"] as? String,
+            !projectRef.isEmpty
+        else {
+            fatalError(
+                "SUPABASE_PROJECT_REF is missing or empty in Info.plist. "
+                + "Add SUPABASE_PROJECT_REF to your app's Info.plist or xcconfig with a valid Supabase project reference ID."
+            )
+        }
+        guard
+            let anonKey = Bundle.main.infoDictionary?["SUPABASE_ANON_KEY"] as? String,
+            !anonKey.isEmpty
+        else {
+            fatalError(
+                "SUPABASE_ANON_KEY is missing or empty in Info.plist. "
+                + "Add SUPABASE_ANON_KEY to your app's Info.plist or xcconfig with a valid Supabase anonymous key."
+            )
+        }
+        return SupabaseConfig(projectRef: projectRef, anonKey: anonKey)
+    }()
 
     /// テスト環境用の設定値
     static let testValue = SupabaseConfig(
