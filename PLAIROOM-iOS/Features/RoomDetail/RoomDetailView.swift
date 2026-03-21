@@ -18,9 +18,7 @@ struct RoomDetailView: View {
                 case .loading:
                     loadingView
                 case .loadFailed:
-                    errorView(canCancel: false)
-                case .error:
-                    errorView(canCancel: true)
+                    errorView
                 case .idle:
                     contentListView
                 }
@@ -52,7 +50,7 @@ struct RoomDetailView: View {
 
     // MARK: - Error
 
-    private func errorView(canCancel: Bool) -> some View {
+    private var errorView: some View {
         VStack(spacing: 24) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 48))
@@ -72,12 +70,10 @@ struct RoomDetailView: View {
                     Text("再試行").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                if canCancel {
-                    Button { store.send(.cancelErrorTapped) } label: {
-                        Text("キャンセル").frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                Button { store.send(.cancelErrorTapped) } label: {
+                    Text("キャンセル").frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
             }
             .padding(.horizontal, 40)
         }
@@ -103,6 +99,7 @@ struct RoomDetailView: View {
                             ContentCard(
                                 content: content,
                                 isLiked: store.likedContentIds.contains(content.id),
+                                isLiking: store.likingContentIds.contains(content.id),
                                 contentType: store.room.contentType,
                                 onLikeTapped: { store.send(.likeButtonTapped(content)) }
                             )
@@ -122,6 +119,8 @@ struct RoomDetailView: View {
 private struct ContentCard: View {
     let content: ContentItem
     let isLiked: Bool
+    /// 連打防止用。通信中かどうか
+    let isLiking: Bool
     let contentType: String
     let onLikeTapped: () -> Void
 
@@ -139,11 +138,17 @@ private struct ContentCard: View {
                 }
                 Spacer()
                 Button(action: onLikeTapped) {
-                    Label("\(content.likeCount)", systemImage: isLiked ? "heart.fill" : "heart")
-                        .font(.caption)
-                        .foregroundStyle(isLiked ? .red : .secondary)
+                    if isLiking {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Label("\(content.likeCount)", systemImage: isLiked ? "heart.fill" : "heart")
+                            .font(.caption)
+                            .foregroundStyle(isLiked ? .red : .secondary)
+                    }
                 }
                 .buttonStyle(.plain)
+                .disabled(isLiking)
             }
 
             // プロンプト
