@@ -34,8 +34,7 @@ struct RoomListFeature {
         var retryCount: Int = 0
         /// ログイン済みかどうか（AuthModal 表示判定に使用）
         var isAuthenticated: Bool = false
-        /// 認証モーダル表示フラグ
-        var isAuthModalPresented: Bool = false
+        
         var auth: AuthFeature.State? = nil
         /// ルーム詳細へ遷移するルームID（実装時にRoomDetailFeatureに接続）
         var selectedRoomID: String? = nil
@@ -112,18 +111,15 @@ struct RoomListFeature {
                 return .none
 
             case .authModalDismissed:
-                state.isAuthModalPresented = false
                 state.auth = nil
                 return .none
 
             case .auth(.delegate(.authSucceeded)):
                 state.isAuthenticated = true
-                state.isAuthModalPresented = false
                 state.auth = nil
                 return .none
 
             case .auth(.delegate(.cancelled)):
-                state.isAuthModalPresented = false
                 state.auth = nil
                 return .none
 
