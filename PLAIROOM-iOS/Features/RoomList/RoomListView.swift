@@ -18,9 +18,7 @@ struct RoomListView: View {
                 case .loading:
                     loadingView
                 case .loadFailed:
-                    errorView(canCancel: false)
-                case .error:
-                    errorView(canCancel: true)
+                    errorView()
                 case .idle:
                     roomListContent
                 }
@@ -45,7 +43,7 @@ struct RoomListView: View {
 
     // MARK: - Error
 
-    private func errorView(canCancel: Bool) -> some View {
+    private func errorView() -> some View {
         VStack(spacing: 24) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 48))
@@ -71,16 +69,14 @@ struct RoomListView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-
-                if canCancel {
-                    Button {
-                        store.send(.cancelErrorTapped)
-                    } label: {
-                        Text("キャンセル")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                
+                Button {
+                    store.send(.cancelErrorTapped)
+                } label: {
+                    Text("キャンセル")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
             }
             .padding(.horizontal, 40)
         }

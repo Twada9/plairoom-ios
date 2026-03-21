@@ -26,7 +26,6 @@ struct RoomListFeature {
         case loading
         case idle
         case loadFailed
-        case error
     }
 
     // MARK: - State
@@ -36,8 +35,6 @@ struct RoomListFeature {
         var loadState: LoadState = .loading
         var rooms: [Room] = []
         var errorMessage: String? = nil
-        /// リトライ回数（loadFailed → error の判定に使用）
-        var retryCount: Int = 0
         /// ルーム詳細へ遷移するルームID（feature/roomdetail で実装）
         var selectedRoomID: String? = nil
     }
@@ -75,21 +72,13 @@ struct RoomListFeature {
             case .roomsResponse(.success(let rooms)):
                 state.loadState = .idle
                 state.rooms = rooms
-                state.retryCount = 0
                 return .none
 
             case .roomsResponse(.failure(let error)):
-                let supabaseError = SupabaseError.from(error)
-                if state.loadState == .loadFailed {
-                    // 2回目の失敗 → error 状態
-                    state.loadState = .error
-                    state.errorMessage = supabaseError.userMessage
-                } else {
-                    // 1回目の失敗 → loadFailed 状態
-                    state.loadState = .loadFailed
-                    state.errorMessage = supabaseError.userMessage
-                    state.retryCount += 1
-                }
+//                let supabaseError = SupabaseError.from(error)
+                // TODO: 後のブランチでエラー文言関連をまとめる等する。
+                state.loadState = .loadFailed
+                state.errorMessage = "エラーが発生しました。もう一度お試しください。"
                 return .none
 
             case .retryTapped:
