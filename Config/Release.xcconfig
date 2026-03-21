@@ -1,0 +1,16 @@
+//
+//  Release.xcconfig
+//  PLAIROOM-iOS
+//
+//  Release ビルド設定
+//
+
+// Secrets.xcconfig から環境変数を読み込む
+#include "Secrets.xcconfig"
+
+// ビルド設定
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) RELEASE
+
+// Info.plistから参照するように環境変数を埋め込む
+SUPABASE_PROJECT_REF = $(SUPABASE_PROJECT_REF)
+SUPABASE_ANON_KEY = $(SUPABASE_ANON_KEY)

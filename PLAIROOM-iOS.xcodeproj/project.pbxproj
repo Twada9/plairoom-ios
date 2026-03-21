@@ -6,6 +6,17 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		1A95CAE22F65977A00E9B4EC /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 1A95CADD2F65977A00E9B4EC /* README.md */; };
+		1A95CAEE2F65A2BD00E9B4EC /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */; };
+		1AAE170F2F667B1C003241AB /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE170E2F667B1C003241AB /* Auth */; };
+		1AAE17112F667B1C003241AB /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17102F667B1C003241AB /* Functions */; };
+		1AAE17132F667B1C003241AB /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17122F667B1C003241AB /* PostgREST */; };
+		1AAE17152F667B1C003241AB /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17142F667B1C003241AB /* Realtime */; };
+		1AAE17172F667B1C003241AB /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17162F667B1C003241AB /* Storage */; };
+		1AAE17232F667F68003241AB /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17222F667F68003241AB /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		1A4DBDB12F6568AD00557C76 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,11 +38,29 @@
 		1A4DBDA32F6568AC00557C76 /* PLAIROOM-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "PLAIROOM-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A4DBDB02F6568AD00557C76 /* PLAIROOM-iOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PLAIROOM-iOSTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A4DBDBA2F6568AD00557C76 /* PLAIROOM-iOSUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "PLAIROOM-iOSUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1A95CADC2F65977A00E9B4EC /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		1A95CADD2F65977A00E9B4EC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		1A95CADE2F65977A00E9B4EC /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		1A95CADF2F65977A00E9B4EC /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		1A95CAE02F65977A00E9B4EC /* Secrets.template.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.template.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		1AAE17032F6639BE003241AB /* Exceptions for "PLAIROOM-iOS" folder in "PLAIROOM-iOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 1A4DBDA22F6568AC00557C76 /* PLAIROOM-iOS */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		1A4DBDA52F6568AC00557C76 /* PLAIROOM-iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				1AAE17032F6639BE003241AB /* Exceptions for "PLAIROOM-iOS" folder in "PLAIROOM-iOS" target */,
+			);
 			path = "PLAIROOM-iOS";
 			sourceTree = "<group>";
 		};
@@ -52,6 +81,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1AAE17232F667F68003241AB /* Supabase in Frameworks */,
+				1AAE17172F667B1C003241AB /* Storage in Frameworks */,
+				1AAE17132F667B1C003241AB /* PostgREST in Frameworks */,
+				1AAE17112F667B1C003241AB /* Functions in Frameworks */,
+				1AAE170F2F667B1C003241AB /* Auth in Frameworks */,
+				1AAE17152F667B1C003241AB /* Realtime in Frameworks */,
+				1A95CAEE2F65A2BD00E9B4EC /* ComposableArchitecture in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +115,8 @@
 				1A4DBDB32F6568AD00557C76 /* PLAIROOM-iOSTests */,
 				1A4DBDBD2F6568AD00557C76 /* PLAIROOM-iOSUITests */,
 				1A4DBDA42F6568AC00557C76 /* Products */,
+				1A95CAE12F65977A00E9B4EC /* Config */,
+				1AAE17212F667F68003241AB /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -90,6 +128,25 @@
 				1A4DBDBA2F6568AD00557C76 /* PLAIROOM-iOSUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		1A95CAE12F65977A00E9B4EC /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				1A95CADC2F65977A00E9B4EC /* Debug.xcconfig */,
+				1A95CADD2F65977A00E9B4EC /* README.md */,
+				1A95CADE2F65977A00E9B4EC /* Release.xcconfig */,
+				1A95CADF2F65977A00E9B4EC /* Secrets.xcconfig */,
+				1A95CAE02F65977A00E9B4EC /* Secrets.template.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+		1AAE17212F667F68003241AB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +169,13 @@
 			);
 			name = "PLAIROOM-iOS";
 			packageProductDependencies = (
+				1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */,
+				1AAE170E2F667B1C003241AB /* Auth */,
+				1AAE17102F667B1C003241AB /* Functions */,
+				1AAE17122F667B1C003241AB /* PostgREST */,
+				1AAE17142F667B1C003241AB /* Realtime */,
+				1AAE17162F667B1C003241AB /* Storage */,
+				1AAE17222F667F68003241AB /* Supabase */,
 			);
 			productName = "PLAIROOM-iOS";
 			productReference = 1A4DBDA32F6568AC00557C76 /* PLAIROOM-iOS.app */;
@@ -195,6 +259,10 @@
 			);
 			mainGroup = 1A4DBD9A2F6568AC00557C76;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
+				1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A4DBDA42F6568AC00557C76 /* Products */;
 			projectDirPath = "";
@@ -212,6 +280,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A95CAE22F65977A00E9B4EC /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -322,6 +391,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -380,6 +450,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -392,6 +463,7 @@
 		};
 		1A4DBDC52F6568AD00557C76 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1A95CADC2F65977A00E9B4EC /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -400,6 +472,7 @@
 				DEVELOPMENT_TEAM = G6P94ZYTA7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PLAIROOM-iOS/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -424,6 +497,7 @@
 		};
 		1A4DBDC62F6568AD00557C76 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 1A95CADE2F65977A00E9B4EC /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -432,6 +506,7 @@
 				DEVELOPMENT_TEAM = G6P94ZYTA7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "PLAIROOM-iOS/Info.plist";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -578,6 +653,63 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-composable-architecture";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.25.1;
+			};
+		};
+		1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
+			productName = ComposableArchitecture;
+		};
+		1AAE170E2F667B1C003241AB /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		1AAE17102F667B1C003241AB /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		1AAE17122F667B1C003241AB /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		1AAE17142F667B1C003241AB /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		1AAE17162F667B1C003241AB /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		1AAE17222F667F68003241AB /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 1A4DBD9B2F6568AC00557C76 /* Project object */;
 }
