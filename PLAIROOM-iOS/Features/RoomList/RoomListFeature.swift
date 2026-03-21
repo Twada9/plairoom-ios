@@ -8,11 +8,6 @@
 //   loading → idle       : ロード完了
 //   loading → loadFailed : ロード失敗
 //   loadFailed → loading : リトライ
-//   loadFailed → error   : リトライ失敗
-//   error → loading : 再試行（ロード）を選択
-//   error → idle    : キャンセルを選択
-//   idle → requesting : ユーザーアクション
-//   requesting → idle : 通信成功 / 失敗
 
 import ComposableArchitecture
 import Foundation
