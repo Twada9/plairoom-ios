@@ -70,8 +70,8 @@ Config/
 
 ### アプリ実行時に空文字列が返される
 
-1. `INFOPLIST_KEY_SUPABASE_PROJECT_REF` が `Debug.xcconfig` / `Release.xcconfig` に設定されているか確認
-2. ビルド設定で Info.plist にキーが埋め込まれているか確認（Xcode の Build Settings で検索）
+1. `Config/Secrets.xcconfig` で `SUPABASE_PROJECT_REF` / `SUPABASE_ANON_KEY` が正しく設定されているか確認
+2. 対象ターゲットの `Info.plist` で Supabase 用の値が `$(SUPABASE_PROJECT_REF)` / `$(SUPABASE_ANON_KEY)` になっているか確認
 
 ## コードでの使用方法
 
