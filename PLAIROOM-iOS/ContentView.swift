@@ -29,8 +29,10 @@ struct AppFeature {
         var isAuthenticated: Bool = false
         /// ホーム画面（RoomList）
         var roomList: RoomListFeature.State = RoomListFeature.State()
-        /// 認証モーダル（アプリ全体で共通。nil のとき非表示、値があるとき sheet 表示）
-        var auth: AuthFeature.State? = nil
+        /// 設定画面（Settings）
+        var settings: SettingsFeature.State = SettingsFeature.State()
+        /// 認証モーダル（@Presents で管理。nil のとき非表示、値があるとき sheet 表示）
+        @Presents var auth: AuthFeature.State?
     }
 
     // MARK: - Action
@@ -38,8 +40,8 @@ struct AppFeature {
     enum Action {
         case onAppear
         case roomList(RoomListFeature.Action)
-        case auth(AuthFeature.Action)
-        case authModalDismissed
+        case settings(SettingsFeature.Action)
+        case auth(PresentationAction<AuthFeature.Action>)
     }
 
     // MARK: - Dependencies
@@ -52,6 +54,9 @@ struct AppFeature {
         Scope(state: \.roomList, action: \.roomList) {
             RoomListFeature()
         }
+        Scope(state: \.settings, action: \.settings) {
+            SettingsFeature()
+        }
         Reduce { state, action in
             switch action {
 
@@ -59,6 +64,7 @@ struct AppFeature {
                 // 起動時に認証状態を確認（§01）
                 let isAuthenticated = authRepository.currentUser() != nil
                 state.isAuthenticated = isAuthenticated
+                state.settings.isAuthenticated = isAuthenticated
                 state.isLaunching = false
                 if !isAuthenticated {
                     // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
@@ -66,18 +72,26 @@ struct AppFeature {
                 }
                 return .none
 
-            case .auth(.delegate(.authSucceeded)):
+            case .auth(.presented(.delegate(.authSucceeded))):
                 state.isAuthenticated = true
+                state.settings.isAuthenticated = true
                 state.auth = nil
                 return .none
 
-            case .auth(.delegate(.cancelled)):
-                // ゲストとしてホームへ継続
-                state.auth = nil
+            case .auth(.presented(.delegate(.cancelled))):
+                // ゲストとしてホームへ継続（dismiss は @Presents が自動処理）
                 return .none
 
-            case .authModalDismissed:
-                state.auth = nil
+            case .settings(.delegate(.loginRequested)):
+                // ゲストがログインボタンをタップ → Auth シートを表示
+                state.auth = AuthFeature.State()
+                return .none
+
+            case .settings(.delegate(.loggedOut)):
+                // ログアウト完了 → 未認証状態へ
+                state.isAuthenticated = false
+                state.settings.isAuthenticated = false
+                state.auth = AuthFeature.State()
                 return .none
 
             case .auth:
@@ -85,9 +99,12 @@ struct AppFeature {
 
             case .roomList:
                 return .none
+
+            case .settings:
+                return .none
             }
         }
-        .ifLet(\.auth, action: \.auth) {
+        .ifLet(\.$auth, action: \.auth) {
             AuthFeature()
         }
     }
@@ -108,14 +125,9 @@ struct ContentView: View {
         }
         .onAppear { store.send(.onAppear) }
         .sheet(
-            isPresented: Binding(
-                get: { store.auth != nil },
-                set: { if !$0 { store.send(.authModalDismissed) } }
-            )
-        ) {
-            if let authStore = store.scope(state: \.auth, action: \.auth) {
-                AuthView(store: authStore)
-            }
+            item: $store.scope(state: \.auth, action: \.auth)
+        ) { authStore in
+            AuthView(store: authStore)
         }
     }
 
@@ -131,8 +143,7 @@ struct ContentView: View {
                 .tabItem {
                     Label("ルーム", systemImage: "house.fill")
                 }
-            // TODO: SettingsView（feature/settings で実装）
-            Text("設定（準備中）")
+            SettingsView(store: store.scope(state: \.settings, action: \.settings))
                 .tabItem {
                     Label("設定", systemImage: "gearshape.fill")
                 }
