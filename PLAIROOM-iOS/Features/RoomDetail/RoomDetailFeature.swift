@@ -22,6 +22,13 @@ import Foundation
 @Reducer
 struct RoomDetailFeature {
 
+    // MARK: - CancelID
+
+    nonisolated enum CancelID {
+        case loadContents
+        case likedStatus
+    }
+
     // MARK: - LoadState
 
     enum LoadState: Equatable {
@@ -97,13 +104,14 @@ struct RoomDetailFeature {
                                         likedIds.insert(id)
                                     }
                                 }
-                                
+
                                 return likedIds
                             }
                             return liked
                         }
                     ))
                 }
+                .cancellable(id: CancelID.likedStatus, cancelInFlight: true)
 
             case .contentsResponse(.failure(let error)):
                 state.loadState = .loadFailed
@@ -235,5 +243,6 @@ struct RoomDetailFeature {
                 Result { try await contentRepository.fetchContents(roomId, contentType) }
             ))
         }
+        .cancellable(id: CancelID.loadContents, cancelInFlight: true)
     }
 }
