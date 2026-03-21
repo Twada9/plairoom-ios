@@ -21,9 +21,9 @@ struct RoomRepository: Sendable {
 
 private enum RoomRepositoryKey: DependencyKey {
     static var liveValue: RoomRepository {
-        let client = DependencyValues._current.supabaseClient
         return RoomRepository(
             fetchRooms: {
+                @Dependency(\.supabaseClient) var client
                 let dtos: [RoomDTO] = try await client
                     .from("rooms")
                     .select()

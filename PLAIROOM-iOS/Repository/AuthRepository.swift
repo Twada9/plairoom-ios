@@ -28,12 +28,13 @@ struct AuthRepository: Sendable {
 
 private enum AuthRepositoryKey: DependencyKey {
     static var liveValue: AuthRepository {
-        let client = DependencyValues._current.supabaseClient
         return AuthRepository(
             signIn: { email, password in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 try await client.auth.signIn(email: email, password: password)
             },
             signUp: { email, password, name in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 try await client.auth.signUp(
                     email: email,
                     password: password,
@@ -41,10 +42,12 @@ private enum AuthRepositoryKey: DependencyKey {
                 )
             },
             signOut: {
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 try await client.auth.signOut()
             },
             currentUser: {
-                client.auth.currentUser
+                @Dependency(\.supabaseClient) var client: SupabaseClient
+                return client.auth.currentUser
             }
         )
     }
