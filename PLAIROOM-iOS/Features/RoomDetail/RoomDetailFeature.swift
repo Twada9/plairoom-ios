@@ -81,14 +81,24 @@ struct RoomDetailFeature {
                 // いいね状態を並行取得
                 let ids = contents.map(\.id)
                 let contentType = state.room.contentType
-                return .run { send in
+                return .run { [ids, contentType] send in
                     await send(.likedStatusResponse(
                         Result {
-                            var liked = Set<String>()
-                            for id in ids {
-                                if try await contentRepository.isLiked(id, contentType) {
-                                    liked.insert(id)
+                            let liked = try await withThrowingTaskGroup(of: (String, Bool).self) { group in
+                                for id in ids {
+                                    group.addTask {
+                                        let isLiked = try await contentRepository.isLiked(id, contentType)
+                                        return (id, isLiked)
+                                    }
                                 }
+                                var likedIds = Set<String>()
+                                for try await (id, isLiked) in group {
+                                    if isLiked {
+                                        likedIds.insert(id)
+                                    }
+                                }
+                                
+                                return likedIds
                             }
                             return liked
                         }
