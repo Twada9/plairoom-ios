@@ -24,7 +24,6 @@ extension DependencyValues {
 
 private enum SupabaseClientKey: DependencyKey {
     /// 本番環境: Info.plist から読み込んだ設定を使って SDK クライアントを生成
-    @MainActor
     static var liveValue: Supabase.SupabaseClient {
         let config = DependencyValues._current.supabaseConfig
         return Supabase.SupabaseClient(

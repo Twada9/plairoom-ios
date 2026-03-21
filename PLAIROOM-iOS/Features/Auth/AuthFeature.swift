@@ -28,6 +28,7 @@ struct AuthFeature {
 
     // MARK: - State
 
+    @ObservableState
     struct State: Equatable {
         var tab: Tab = .login
 
@@ -68,7 +69,7 @@ struct AuthFeature {
 
     // MARK: - Body
 
-    var body: some ReducerOf<Self> {
+    var body: some Reducer<State, Action> {
         BindingReducer()
         Reduce { state, action in
             switch action {

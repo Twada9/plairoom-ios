@@ -2,38 +2,88 @@
 //  ContentView.swift
 //  PLAIROOM-iOS
 //
-//  Created by wada on 2026/03/14.
+// 状態遷移図 (state-transition.md §01, §02) に準拠:
 //
+//   §01 アプリ起動:
+//     Launching → AuthChecking → LoggedIn  → ホーム画面へ
+//                              → LoggedOut → ログインモーダル表示
+//
+//   §02 Global Auth:
+//     Unauthenticated ⇄ Authenticated
 
 import ComposableArchitecture
 import SwiftUI
 
-// MARK: - AppFeature (仮: AppFeature 実装後に置き換え)
+// MARK: - AppFeature
 
 @Reducer
 struct AppFeature {
 
+    // MARK: - State
+
     @ObservableState
-    struct State {
+    struct State: Equatable {
+        /// 起動時の認証チェック完了フラグ
+        var isLaunching: Bool = true
+        /// 認証状態（§02 Global Auth）
         var isAuthenticated: Bool = false
-        var auth: AuthFeature.State? = AuthFeature.State()
+        /// ホーム画面（RoomList）
+        var roomList: RoomListFeature.State = RoomListFeature.State()
+        /// 認証モーダル（アプリ全体で共通。nil のとき非表示、値があるとき sheet 表示）
+        var auth: AuthFeature.State? = nil
     }
+
+    // MARK: - Action
 
     enum Action {
+        case onAppear
+        case roomList(RoomListFeature.Action)
         case auth(AuthFeature.Action)
+        case authModalDismissed
     }
 
-    var body: some ReducerOf<Self> {
+    // MARK: - Dependencies
+
+    @Dependency(\.authRepository) var authRepository
+
+    // MARK: - Body
+
+    var body: some Reducer<State, Action> {
+        Scope(state: \.roomList, action: \.roomList) {
+            RoomListFeature()
+        }
         Reduce { state, action in
             switch action {
+
+            case .onAppear:
+                // 起動時に認証状態を確認（§01）
+                let isAuthenticated = authRepository.currentUser() != nil
+                state.isAuthenticated = isAuthenticated
+                state.isLaunching = false
+                if !isAuthenticated {
+                    // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
+                    state.auth = AuthFeature.State()
+                }
+                return .none
+
             case .auth(.delegate(.authSucceeded)):
                 state.isAuthenticated = true
                 state.auth = nil
                 return .none
+
             case .auth(.delegate(.cancelled)):
-                // ゲストとしてホームへ（TODO: ホーム画面実装後に対応）
+                // ゲストとしてホームへ継続
+                state.auth = nil
                 return .none
+
+            case .authModalDismissed:
+                state.auth = nil
+                return .none
+
             case .auth:
+                return .none
+
+            case .roomList:
                 return .none
             }
         }
@@ -49,14 +99,48 @@ struct ContentView: View {
     @Bindable var store: StoreOf<AppFeature>
 
     var body: some View {
-        if store.isAuthenticated {
-            // TODO: ホーム画面（RoomList）へ遷移
-            Text("ホーム（準備中）")
-        } else if let authStore = store.scope(state: \.auth, action: \.auth) {
-            AuthView(store: authStore)
+        Group {
+            if store.isLaunching {
+                splashView
+            } else {
+                mainView
+            }
+        }
+        .onAppear { store.send(.onAppear) }
+        .sheet(
+            isPresented: Binding(
+                get: { store.auth != nil },
+                set: { if !$0 { store.send(.authModalDismissed) } }
+            )
+        ) {
+            if let authStore = store.scope(state: \.auth, action: \.auth) {
+                AuthView(store: authStore)
+            }
+        }
+    }
+
+    private var splashView: some View {
+        ProgressView()
+            .scaleEffect(1.5)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var mainView: some View {
+        TabView {
+            RoomListView(store: store.scope(state: \.roomList, action: \.roomList))
+                .tabItem {
+                    Label("ルーム", systemImage: "house.fill")
+                }
+            // TODO: SettingsView（feature/settings で実装）
+            Text("設定（準備中）")
+                .tabItem {
+                    Label("設定", systemImage: "gearshape.fill")
+                }
         }
     }
 }
+
+// MARK: - Preview
 
 #Preview {
     ContentView(
