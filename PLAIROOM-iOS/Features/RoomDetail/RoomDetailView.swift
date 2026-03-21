@@ -56,6 +56,7 @@ struct RoomDetailView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
             VStack(spacing: 8) {
+                // TODO: エラー周りをリファクタする。
                 Text("読み込みに失敗しました").font(.headline)
                 if let msg = store.errorMessage {
                     Text(msg)
