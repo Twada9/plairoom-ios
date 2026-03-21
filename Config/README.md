@@ -75,14 +75,17 @@ Config/
 
 ## コードでの使用方法
 
-環境変数は `SupabaseConfig.shared` を通じて自動的に読み込まれます：
+環境変数は swift-dependencies の `@Dependency(\.supabaseConfig)` を通じて読み込まれます：
 
 ```swift
-import Foundation
+import Dependencies
 
-// アプリ起動時に自動的に設定値が読み込まれる
-let config = SupabaseConfig.shared
+struct SupabaseFeature {
+    @Dependency(\.supabaseConfig) var supabaseConfig
 
-print(config.projectRef)  // Secrets.xcconfig の値が表示される
-print(config.anonKey)     // Secrets.xcconfig の値が表示される
+    func printConfig() {
+        print(supabaseConfig.projectRef)  // Secrets.xcconfig の値が表示される
+        print(supabaseConfig.anonKey)     // Secrets.xcconfig の値が表示される
+    }
+}
 ```
