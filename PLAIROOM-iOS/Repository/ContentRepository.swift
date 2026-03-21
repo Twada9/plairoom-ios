@@ -27,9 +27,9 @@ struct ContentRepository: Sendable {
 
 private enum ContentRepositoryKey: DependencyKey {
     static var liveValue: ContentRepository {
-        let client = DependencyValues._current.supabaseClient
         return ContentRepository(
             fetchContents: { roomId, contentType in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 let table = contentType == "image" ? "image_contents" : "music_contents"
                 let dtos: [ContentItemDTO] = try await client
                     .from(table)
@@ -41,6 +41,7 @@ private enum ContentRepositoryKey: DependencyKey {
                 return dtos.map { $0.toEntity() }
             },
             likeContent: { contentId, contentType in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 guard let userId = client.auth.currentUser?.id.uuidString else {
                     throw SupabaseError.unauthorized
                 }
@@ -54,6 +55,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .execute()
             },
             unlikeContent: { contentId, contentType in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 guard let userId = client.auth.currentUser?.id.uuidString else {
                     throw SupabaseError.unauthorized
                 }
@@ -66,6 +68,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .execute()
             },
             isLiked: { contentId, contentType in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 guard let userId = client.auth.currentUser?.id.uuidString else {
                     return false
                 }
@@ -80,6 +83,7 @@ private enum ContentRepositoryKey: DependencyKey {
                 return !result.isEmpty
             },
             patchStatus: { contentId, contentType, status in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
                 let table = contentType == "image" ? "image_contents" : "music_contents"
                 try await client
                     .from(table)
