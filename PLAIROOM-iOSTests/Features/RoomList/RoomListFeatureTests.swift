@@ -20,7 +20,7 @@ struct RoomListFeatureTests {
             description: "Description 1",
             basePrompt: "Prompt 1",
             roomType: "type1",
-            contentType: "image",
+            contentType: .image,
             createdAt: "2026-03-20T00:00:00Z"
         ),
         Room(
@@ -29,7 +29,7 @@ struct RoomListFeatureTests {
             description: "Description 2",
             basePrompt: "Prompt 2",
             roomType: "type2",
-            contentType: "music",
+            contentType: .music,
             createdAt: "2026-03-21T00:00:00Z"
         )
     ]

@@ -153,10 +153,10 @@ private struct RoomCard: View {
     }
 
     private var contentTypeBadge: some View {
-        let (icon, color): (String, Color) = room.contentType == "image"
+        let (icon, color): (String, Color) = room.contentType == .image
             ? ("photo", .blue)
             : ("music.note", .purple)
-        return Label(room.contentType == "image" ? "画像" : "音楽", systemImage: icon)
+        return Label(room.contentType == .image ? "画像" : "音楽", systemImage: icon)
             .font(.caption)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -198,7 +198,7 @@ private struct RoomCard: View {
                         description: "AIで夏らしい風景画を生成して競い合おう",
                         basePrompt: "beautiful summer landscape",
                         roomType: "battle",
-                        contentType: "image",
+                        contentType: .image,
                         createdAt: "2026-03-14T00:00:00Z"
                     ),
                     Room(
@@ -207,7 +207,7 @@ private struct RoomCard: View {
                         description: "AIで即興ジャズを生成しよう",
                         basePrompt: "smooth jazz improvisation",
                         roomType: "free",
-                        contentType: "music",
+                        contentType: .music,
                         createdAt: "2026-03-13T00:00:00Z"
                     ),
                 ]
