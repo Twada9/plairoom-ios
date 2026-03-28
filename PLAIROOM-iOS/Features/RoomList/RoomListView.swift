@@ -25,6 +25,11 @@ struct RoomListView: View {
             }
             .navigationTitle("ルーム")
             .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(
+                item: $store.scope(state: \.roomDetail, action: \.roomDetail)
+            ) { roomDetailStore in
+                RoomDetailView(store: roomDetailStore)
+            }
         }
         .onAppear { store.send(.onAppear) }
     }

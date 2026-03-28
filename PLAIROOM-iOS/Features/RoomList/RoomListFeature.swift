@@ -34,8 +34,8 @@ struct RoomListFeature {
         var isAuthenticated: Bool = false
         
         var auth: AuthFeature.State? = nil
-        /// ルーム詳細へ遷移するルームID（実装時にRoomDetailFeatureに接続）
-        var selectedRoomID: String? = nil
+        /// ルーム詳細への遷移
+        @Presents var roomDetail: RoomDetailFeature.State?
     }
 
     // MARK: - Action
@@ -51,6 +51,8 @@ struct RoomListFeature {
         case auth(AuthFeature.Action)
         // ログアウト通知受け取り（AppFeatureから）
         case setAuthenticated(Bool)
+        // ルーム詳細
+        case roomDetail(PresentationAction<RoomDetailFeature.Action>)
     }
 
     // MARK: - Dependencies
@@ -100,8 +102,7 @@ struct RoomListFeature {
                 return .none
 
             case .roomTapped(let room):
-                // TODO: RoomDetailFeature への遷移（feature/roomdetail で実装）
-                state.selectedRoomID = room.id
+                state.roomDetail = RoomDetailFeature.State(room: room)
                 return .none
 
             case .setAuthenticated(let value):
@@ -123,10 +124,16 @@ struct RoomListFeature {
 
             case .auth:
                 return .none
+
+            case .roomDetail:
+                return .none
             }
         }
         .ifLet(\.auth, action: \.auth) {
             AuthFeature()
+        }
+        .ifLet(\.$roomDetail, action: \.roomDetail) {
+            RoomDetailFeature()
         }
     }
 }

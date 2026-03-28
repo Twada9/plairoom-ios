@@ -24,21 +24,22 @@ private enum RoomRepositoryKey: DependencyKey {
         return RoomRepository(
             fetchRooms: {
                 @Dependency(\.supabaseClient) var client
-                let dtos: [RoomDTO] = try await client
+                let data = try await client
                     .from("rooms")
                     .select()
                     .order("created_at", ascending: false)
                     .execute()
-                    .value
+                    .data
+                let dtos = try await JSONDecoder.snakeCaseDecoder.decode([RoomDTO].self, from: data)
                 return try dtos.map { dto in
-                    let contentType = try ContentType(value: dto.contentType)
+                    let contentType = try ContentType(rawValue: dto.contentType)
                     return Room(
                         id: dto.id,
                         title: dto.title,
                         description: dto.description,
                         basePrompt: dto.basePrompt,
                         roomType: dto.roomType,
-                        contentType: contentType,
+                        contentType: contentType!,
                         createdAt: dto.createdAt
                     )
                 }

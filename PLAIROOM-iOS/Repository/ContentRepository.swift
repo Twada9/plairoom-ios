@@ -10,7 +10,7 @@ import Supabase
 
 // MARK: - ContentType
 
-enum ContentType: String, Sendable {
+enum ContentType: String, Sendable, Codable {
     case image
     case music
 
@@ -18,14 +18,6 @@ enum ContentType: String, Sendable {
         switch self {
         case .image: return "image_contents"
         case .music: return "music_contents"
-        }
-    }
-
-    init(value: String) throws {
-        switch value {
-        case "image": self = .image
-        case "music": self = .music
-        default: throw ContentError.invalidContentType(value)
         }
     }
 }
@@ -58,14 +50,44 @@ private enum ContentRepositoryKey: DependencyKey {
         return ContentRepository(
             fetchContents: { roomId, contentType in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
+
+                // コンテンツ一覧取得（プロフィール情報を含む）
                 let dtos: [ContentItemDTO] = try await client
                     .from(contentType.tableName)
-                    .select("*,likes(count),profiles(name,avatar_url)")
+                    .select("*,profiles(name,avatar_url)")
                     .eq("room_id", value: roomId)
                     .order("created_at", ascending: false)
                     .execute()
                     .value
-                return dtos.map { $0.toEntity() }
+
+                // 各コンテンツのいいね数を取得
+                var items = dtos.map { $0.toEntity() }
+                for i in items.indices {
+                    let count = try await client
+                        .from("likes")
+                        .select("id", head: false, count: .exact)
+                        .eq("content_type", value: contentType.rawValue)
+                        .eq("content_id", value: items[i].id)
+                        .execute()
+                        .count ?? 0
+
+                    let item = items[i]
+                    items[i] = ContentItem(
+                        id: item.id,
+                        userId: item.userId,
+                        roomId: item.roomId,
+                        fileUrl: item.fileUrl,
+                        promptUsed: item.promptUsed,
+                        status: item.status,
+                        createdAt: item.createdAt,
+                        likeCount: count,
+                        authorName: item.authorName,
+                        authorAvatarUrl: item.authorAvatarUrl,
+                        duration: item.duration
+                    )
+                }
+
+                return items
             },
             likeContent: { contentId, contentType in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
