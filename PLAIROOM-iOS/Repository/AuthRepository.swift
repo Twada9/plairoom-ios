@@ -54,6 +54,7 @@ private enum AuthRepositoryKey: DependencyKey {
             authStateChanged: {
                 @Dependency(\.supabaseClient) var client: SupabaseClient
                 // TODO: まだ最低限のログイン状態のみを取得する。今後はプレミアムかどうかの問合せを統合する。
+                // TODO: TaskがAsyncStreamが終了しても解放されていないかもしれない
                 return AsyncStream { continuation in
                     Task {
                         for await (event, session) in client.auth.authStateChanges {
