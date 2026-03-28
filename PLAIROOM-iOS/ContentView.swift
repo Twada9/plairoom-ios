@@ -18,9 +18,18 @@ import SwiftUI
 
 @Reducer
 struct AppFeature {
-
+    // AppFeatureで共有
+    enum AuthState {
+        case standard
+        case premium
+        case guest
+        
+        var isAuthenticated: Bool {
+            return .guest != self
+        }
+    }
     // MARK: - State
-
+    
     @ObservableState
     struct State: Equatable {
         /// 起動時の認証チェック完了フラグ
@@ -33,23 +42,31 @@ struct AppFeature {
         var settings: SettingsFeature.State = SettingsFeature.State()
         /// 認証モーダル（@Presents で管理。nil のとき非表示、値があるとき sheet 表示）
         @Presents var auth: AuthFeature.State?
+        
+        @Shared(.inMemory("authState")) var authState: AuthState = .standard
+        /// アプリのどこからでも認証画面を開けるようにする共有値
+        /// trueにしたら表示される
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
-
+    
     // MARK: - Action
-
+    
     enum Action {
         case onAppear
         case roomList(RoomListFeature.Action)
         case settings(SettingsFeature.Action)
         case auth(PresentationAction<AuthFeature.Action>)
+        case authStateChanged(Bool)
+        case showAuthView
+        case onDismissAuthView
     }
-
+    
     // MARK: - Dependencies
-
+    
     @Dependency(\.authRepository) var authRepository
-
+    
     // MARK: - Body
-
+    
     var body: some Reducer<State, Action> {
         Scope(state: \.roomList, action: \.roomList) {
             RoomListFeature()
@@ -59,47 +76,47 @@ struct AppFeature {
         }
         Reduce { state, action in
             switch action {
-
+                
             case .onAppear:
-                // 起動時に認証状態を確認（§01）
-                let isAuthenticated = authRepository.currentUser() != nil
-                state.isAuthenticated = isAuthenticated
-                state.settings.isAuthenticated = isAuthenticated
                 state.isLaunching = false
-                if !isAuthenticated {
-                    // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
-                    state.auth = AuthFeature.State()
+                return .run { send in
+                    for await isAuth in await authRepository.authStateChanged() {
+                        await send(.authStateChanged(isAuth))
+                    }
                 }
-                return .none
-
+                
             case .auth(.presented(.delegate(.authSucceeded))):
                 state.isAuthenticated = true
-                state.settings.isAuthenticated = true
+                state.$authState.withLock { $0 = state.isAuthenticated ? .standard : .guest }
+                state.$showAuthViewTrigger.withLock { $0 = false }
                 state.auth = nil
                 return .none
-
+                
             case .auth(.presented(.delegate(.cancelled))):
                 // ゲストとしてホームへ継続（dismiss は @Presents が自動処理）
                 return .none
-
-            case .settings(.delegate(.loginRequested)):
-                // ゲストがログインボタンをタップ → Auth シートを表示
+                
+            case let .authStateChanged(isAuth):
+                // TODO: プレミアムかどうかの判定も必要
+                state.$authState.withLock { $0 = isAuth ? .standard : .guest }
+                
+                if !state.authState.isAuthenticated {
+                    // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
+                    return .send(.showAuthView)
+                }
+                return .none
+            case .showAuthView:
                 state.auth = AuthFeature.State()
                 return .none
-
-            case .settings(.delegate(.loggedOut)):
-                // ログアウト完了 → 未認証状態へ
-                state.isAuthenticated = false
-                state.settings.isAuthenticated = false
-                state.auth = AuthFeature.State()
+            case .onDismissAuthView:
+                state.$showAuthViewTrigger.withLock { $0 = false }
                 return .none
-
             case .auth:
                 return .none
-
+                
             case .roomList:
                 return .none
-
+                
             case .settings:
                 return .none
             }
@@ -114,7 +131,7 @@ struct AppFeature {
 
 struct ContentView: View {
     @Bindable var store: StoreOf<AppFeature>
-
+    
     var body: some View {
         Group {
             if store.isLaunching {
@@ -125,18 +142,25 @@ struct ContentView: View {
         }
         .onAppear { store.send(.onAppear) }
         .sheet(
-            item: $store.scope(state: \.auth, action: \.auth)
-        ) { authStore in
-            AuthView(store: authStore)
-        }
+            item: $store.scope(state: \.auth, action: \.auth),
+            onDismiss: {
+                store.send(.onDismissAuthView)
+            }, content: { authStore in
+                AuthView(store: authStore)
+            })
+        .onChange(of: store.showAuthViewTrigger, { _, shouldShow in
+            if shouldShow {
+                store.send(.showAuthView)
+            }
+        })
     }
-
+    
     private var splashView: some View {
         ProgressView()
             .scaleEffect(1.5)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
+    
     private var mainView: some View {
         TabView {
             RoomListView(store: store.scope(state: \.roomList, action: \.roomList))

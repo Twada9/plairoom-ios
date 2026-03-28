@@ -22,6 +22,8 @@ struct AuthRepository: Sendable {
     var signOut: @Sendable () async throws -> Void
     /// 現在ログイン中のユーザー（未ログインなら nil）
     var currentUser: @Sendable () -> User?
+    /// ログイン状態のストリーム
+    var authStateChanged: @Sendable () -> AsyncStream<Bool>
 }
 
 // MARK: - DependencyKey
@@ -48,6 +50,18 @@ private enum AuthRepositoryKey: DependencyKey {
             currentUser: {
                 @Dependency(\.supabaseClient) var client: SupabaseClient
                 return client.auth.currentUser
+            },
+            authStateChanged: {
+                @Dependency(\.supabaseClient) var client: SupabaseClient
+                // TODO: まだ最低限のログイン状態のみを取得する。今後はプレミアムかどうかの問合せを統合する。
+                return AsyncStream { continuation in
+                    Task {
+                        for await (event, session) in client.auth.authStateChanges {
+                            continuation.yield(session != nil)
+                        }
+                        return continuation.finish()
+                    }
+                }
             }
         )
     }
@@ -56,7 +70,8 @@ private enum AuthRepositoryKey: DependencyKey {
         signIn: { _, _ in },
         signUp: { _, _, _ in },
         signOut: {},
-        currentUser: { nil }
+        currentUser: { nil },
+        authStateChanged: unimplemented()
     )
 }
 

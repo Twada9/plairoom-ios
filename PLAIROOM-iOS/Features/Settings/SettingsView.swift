@@ -12,7 +12,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                if store.isAuthenticated {
+                if store.authState.isAuthenticated {
                     // ── ログイン済み ──────────────────────────
                     accountSection
                     planSection
@@ -26,9 +26,9 @@ struct SettingsView: View {
             }
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.large)
-            .disabled(store.isRequesting)
+            .disabled(store.loadState == .loading)
             .overlay {
-                if store.isRequesting {
+                if store.loadState == .loading {
                     ZStack {
                         Color.black.opacity(0.3).ignoresSafeArea()
                         VStack(spacing: 12) {
@@ -108,13 +108,14 @@ struct SettingsView: View {
     // MARK: - プランセクション
 
     private var planSection: some View {
-        Section("プラン") {
+        let isPremium = store.authState == .premium
+        return Section("プラン") {
             HStack {
-                Label(store.isPremium ? "プレミアム" : "無料プラン",
-                      systemImage: store.isPremium ? "crown.fill" : "person.fill")
-                    .foregroundStyle(store.isPremium ? .yellow : .primary)
+                Label(isPremium ? "プレミアム" : "無料プラン",
+                      systemImage: isPremium ? "crown.fill" : "person.fill")
+                    .foregroundStyle(isPremium ? .yellow : .primary)
                 Spacer()
-                if !store.isPremium {
+                if !isPremium {
                     Text("アップグレード")
                         .font(.caption)
                         .foregroundStyle(.tint)
@@ -163,7 +164,7 @@ struct SettingsView: View {
 #Preview("ゲスト") {
     SettingsView(
         store: Store(
-            initialState: SettingsFeature.State(isAuthenticated: false)
+            initialState: SettingsFeature.State()
         ) {
             SettingsFeature()
         }
@@ -174,10 +175,9 @@ struct SettingsView: View {
     SettingsView(
         store: Store(
             initialState: SettingsFeature.State(
-                isAuthenticated: true,
                 userName: "テストユーザー",
                 userEmail: "test@example.com",
-                isPremium: false
+                authState: .standard
             )
         ) {
             SettingsFeature()

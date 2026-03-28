@@ -17,18 +17,24 @@ import Supabase
 @Reducer
 struct SettingsFeature {
 
+    enum LoadState: Equatable {
+        case loading
+        case idle
+        case loadFailed
+    }
+    
     // MARK: - State
 
     @ObservableState
     struct State: Equatable {
         /// AppFeature から渡される認証状態。View の分岐に使用する
-        var isAuthenticated: Bool = false
         var userName: String = ""
         var userEmail: String = ""
-        var isPremium: Bool = false
-        var isRequesting: Bool = false
+        var loadState: LoadState = .idle
         var errorMessage: String? = nil
         var showLogoutConfirmation: Bool = false
+        @Shared(.inMemory("authState")) var authState: AppFeature.AuthState = .guest
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
 
     // MARK: - Action
@@ -42,14 +48,6 @@ struct SettingsFeature {
         case logoutConfirmed
         case logoutCancelled
         case logoutResponse(Result<Void, Error>)
-        case delegate(Delegate)
-
-        enum Delegate {
-            /// ログインボタンタップ → AppFeature が Auth シートを表示
-            case loginRequested
-            /// ログアウト完了 → AppFeature が認証状態を未認証へ更新
-            case loggedOut
-        }
     }
 
     // MARK: - Dependencies
@@ -62,9 +60,9 @@ struct SettingsFeature {
         BindingReducer()
         Reduce { state, action in
             switch action {
-
+                
             case .onAppear:
-                guard state.isAuthenticated else { return .none }
+                guard state.authState.isAuthenticated else { return .none }
                 if let user = authRepository.currentUser() {
                     state.userEmail = user.email ?? ""
                     if case let .string(name) = user.userMetadata["name"] {
@@ -72,38 +70,39 @@ struct SettingsFeature {
                     }
                 }
                 return .none
-
+                
             case .loginButtonTapped:
-                return .send(.delegate(.loginRequested))
-
+                // authを表示する共有値をtrueにする
+                state.$showAuthViewTrigger.withLock { $0 = true }
+                return .none
+                
             case .logoutButtonTapped:
                 state.showLogoutConfirmation = true
                 return .none
-
+                
             case .logoutCancelled:
                 state.showLogoutConfirmation = false
                 return .none
-
+                
             case .logoutConfirmed:
                 state.showLogoutConfirmation = false
-                state.isRequesting = true
+                state.loadState = .loading
                 state.errorMessage = nil
                 return .run { send in
                     await send(.logoutResponse(
                         Result { try await authRepository.signOut() }
                     ))
                 }
-
+                
             case .logoutResponse(.success):
-                state.isRequesting = false
-                return .send(.delegate(.loggedOut))
-
-            case .logoutResponse(.failure(let error)):
-                state.isRequesting = false
-                state.errorMessage = SupabaseError.from(error).localizedDescription
+                state.loadState = .idle
                 return .none
 
-            case .delegate:
+            case .logoutResponse(.failure(let error)):
+                state.loadState = .loadFailed
+                // TODO: エラー周りは後ほどリファクタする。
+//                state.errorMessage = SupabaseError.from(error).localizedDescription
+                state.errorMessage = "エラーが発生しました。"
                 return .none
 
             case .binding:

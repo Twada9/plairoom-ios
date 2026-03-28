@@ -44,6 +44,8 @@ struct AuthFeature {
         // 共通
         var isRequesting: Bool = false
         var errorMessage: String? = nil
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
+
     }
 
     // MARK: - Action
@@ -66,7 +68,8 @@ struct AuthFeature {
     // MARK: - Dependencies
 
     @Dependency(\.authRepository) var authRepository
-
+    @Dependency(\.dismiss) var dismiss
+    
     // MARK: - Body
 
     var body: some Reducer<State, Action> {
@@ -106,7 +109,7 @@ struct AuthFeature {
                 }
 
             case .cancelButtonTapped:
-                return .send(.delegate(.cancelled))
+                return .run { _ in await dismiss() }
 
             case .authResponse(.success):
                 state.isRequesting = false
