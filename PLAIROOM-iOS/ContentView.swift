@@ -18,9 +18,18 @@ import SwiftUI
 
 @Reducer
 struct AppFeature {
-
+    // AppFeatureで共有
+    enum AuthState {
+        case standard
+        case premium
+        case guest
+        
+        var isAuthenticated: Bool {
+            return .guest != self
+        }
+    }
     // MARK: - State
-
+    
     @ObservableState
     struct State: Equatable {
         /// 起動時の認証チェック完了フラグ
@@ -29,65 +38,90 @@ struct AppFeature {
         var isAuthenticated: Bool = false
         /// ホーム画面（RoomList）
         var roomList: RoomListFeature.State = RoomListFeature.State()
-        /// 認証モーダル（アプリ全体で共通。nil のとき非表示、値があるとき sheet 表示）
-        var auth: AuthFeature.State? = nil
+        /// 設定画面（Settings）
+        var settings: SettingsFeature.State = SettingsFeature.State()
+        /// 認証モーダル（@Presents で管理。nil のとき非表示、値があるとき sheet 表示）
+        @Presents var auth: AuthFeature.State?
+        
+        @Shared(.inMemory("authState")) var authState: AuthState = .guest
+        /// アプリのどこからでも認証画面を開けるようにする共有値
+        /// trueにしたら表示される
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
-
+    
     // MARK: - Action
-
+    
     enum Action {
         case onAppear
         case roomList(RoomListFeature.Action)
-        case auth(AuthFeature.Action)
-        case authModalDismissed
+        case settings(SettingsFeature.Action)
+        case auth(PresentationAction<AuthFeature.Action>)
+        case authStateChanged(Bool)
+        case showAuthView
+        case onDismissAuthView
     }
-
+    
     // MARK: - Dependencies
-
+    
     @Dependency(\.authRepository) var authRepository
-
+    
     // MARK: - Body
-
+    
     var body: some Reducer<State, Action> {
         Scope(state: \.roomList, action: \.roomList) {
             RoomListFeature()
         }
+        Scope(state: \.settings, action: \.settings) {
+            SettingsFeature()
+        }
         Reduce { state, action in
             switch action {
-
+                
             case .onAppear:
-                // 起動時に認証状態を確認（§01）
-                let isAuthenticated = authRepository.currentUser() != nil
-                state.isAuthenticated = isAuthenticated
                 state.isLaunching = false
-                if !isAuthenticated {
+                return .run { send in
+                    for await isAuth in await authRepository.authStateChanged() {
+                        await send(.authStateChanged(isAuth))
+                    }
+                }
+                
+            case .auth(.presented(.delegate(.authSucceeded))):
+                state.isAuthenticated = true
+                state.$authState.withLock { $0 = state.isAuthenticated ? .standard : .guest }
+                state.$showAuthViewTrigger.withLock { $0 = false }
+                state.auth = nil
+                return .send(.settings(.onAppear))
+                
+            case .auth(.presented(.delegate(.cancelled))):
+                // ゲストとしてホームへ継続（dismiss は @Presents が自動処理）
+                return .none
+                
+            case let .authStateChanged(isAuth):
+                // TODO: プレミアムかどうかの判定も必要
+                state.$authState.withLock { $0 = isAuth ? .standard : .guest }
+                
+                if !state.authState.isAuthenticated {
                     // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
-                    state.auth = AuthFeature.State()
+                    return .send(.showAuthView)
                 }
                 return .none
-
-            case .auth(.delegate(.authSucceeded)):
-                state.isAuthenticated = true
-                state.auth = nil
+            case .showAuthView:
+                state.auth = AuthFeature.State()
                 return .none
-
-            case .auth(.delegate(.cancelled)):
-                // ゲストとしてホームへ継続
-                state.auth = nil
+            case .onDismissAuthView:
+                state.$showAuthViewTrigger.withLock { $0 = false }
                 return .none
-
-            case .authModalDismissed:
-                state.auth = nil
-                return .none
-
             case .auth:
                 return .none
-
+                
             case .roomList:
+                return .none
+                
+            case .settings:
                 return .none
             }
         }
-        .ifLet(\.auth, action: \.auth) {
+        .ifLet(\.$auth, action: \.auth) {
             AuthFeature()
         }
     }
@@ -97,7 +131,7 @@ struct AppFeature {
 
 struct ContentView: View {
     @Bindable var store: StoreOf<AppFeature>
-
+    
     var body: some View {
         Group {
             if store.isLaunching {
@@ -108,31 +142,32 @@ struct ContentView: View {
         }
         .onAppear { store.send(.onAppear) }
         .sheet(
-            isPresented: Binding(
-                get: { store.auth != nil },
-                set: { if !$0 { store.send(.authModalDismissed) } }
-            )
-        ) {
-            if let authStore = store.scope(state: \.auth, action: \.auth) {
+            item: $store.scope(state: \.auth, action: \.auth),
+            onDismiss: {
+                store.send(.onDismissAuthView)
+            }, content: { authStore in
                 AuthView(store: authStore)
+            })
+        .onChange(of: store.showAuthViewTrigger, { _, shouldShow in
+            if shouldShow {
+                store.send(.showAuthView)
             }
-        }
+        })
     }
-
+    
     private var splashView: some View {
         ProgressView()
             .scaleEffect(1.5)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
+    
     private var mainView: some View {
         TabView {
             RoomListView(store: store.scope(state: \.roomList, action: \.roomList))
                 .tabItem {
                     Label("ルーム", systemImage: "house.fill")
                 }
-            // TODO: SettingsView（feature/settings で実装）
-            Text("設定（準備中）")
+            SettingsView(store: store.scope(state: \.settings, action: \.settings))
                 .tabItem {
                     Label("設定", systemImage: "gearshape.fill")
                 }

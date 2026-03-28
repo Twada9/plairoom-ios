@@ -1,0 +1,113 @@
+//
+//  SettingsFeature.swift
+//  PLAIROOM-iOS
+//
+// 状態遷移図 (state-transition.md §09) に準拠:
+//
+//   [*] → idle（isAuthenticated により表示分岐）
+//   idle(guest)  → [*] : ログインボタン → delegate(.loginRequested)
+//   idle(logged) → [*] : ログアウト → AppFeature が Unauthenticated へ遷移
+
+import ComposableArchitecture
+import Foundation
+import Supabase
+
+// MARK: - SettingsFeature
+
+@Reducer
+struct SettingsFeature {
+
+    enum LoadState: Equatable {
+        case loading
+        case idle
+        case loadFailed
+    }
+    
+    // MARK: - State
+
+    @ObservableState
+    struct State: Equatable {
+        /// AppFeature から渡される認証状態。View の分岐に使用する
+        var userName: String = ""
+        var userEmail: String = ""
+        var loadState: LoadState = .idle
+        var errorMessage: String? = nil
+        var showLogoutConfirmation: Bool = false
+        @Shared(.inMemory("authState")) var authState: AppFeature.AuthState = .guest
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
+    }
+
+    // MARK: - Action
+
+    enum Action: BindableAction {
+        case binding(BindingAction<State>)
+        case onAppear
+        /// ゲスト状態でログイン/登録ボタンをタップ
+        case loginButtonTapped
+        case logoutButtonTapped
+        case logoutConfirmed
+        case logoutCancelled
+        case logoutResponse(Result<Void, Error>)
+    }
+
+    // MARK: - Dependencies
+
+    @Dependency(\.authRepository) var authRepository
+
+    // MARK: - Body
+
+    var body: some Reducer<State, Action> {
+        BindingReducer()
+        Reduce { state, action in
+            switch action {
+                
+            case .onAppear:
+                guard state.authState.isAuthenticated else { return .none }
+                if let user = authRepository.currentUser() {
+                    state.userEmail = user.email ?? ""
+                    if case let .string(name) = user.userMetadata["name"] {
+                        state.userName = name
+                    }
+                }
+                return .none
+                
+            case .loginButtonTapped:
+                // authを表示する共有値をtrueにする
+                state.$showAuthViewTrigger.withLock { $0 = true }
+                return .none
+                
+            case .logoutButtonTapped:
+                state.showLogoutConfirmation = true
+                return .none
+                
+            case .logoutCancelled:
+                state.showLogoutConfirmation = false
+                return .none
+                
+            case .logoutConfirmed:
+                state.showLogoutConfirmation = false
+                state.loadState = .loading
+                state.errorMessage = nil
+                return .run { send in
+                    await send(.logoutResponse(
+                        Result { try await authRepository.signOut() }
+                    ))
+                }
+                
+            case .logoutResponse(.success):
+                state.loadState = .idle
+                return .none
+
+            case .logoutResponse(.failure(let error)):
+                state.loadState = .loadFailed
+                // TODO: エラー周りは後ほどリファクタする。
+//                state.errorMessage = SupabaseError.from(error).localizedDescription
+                state.errorMessage = "エラーが発生しました。"
+                return .none
+
+            case .binding:
+                return .none
+            }
+        }
+    }
+}
