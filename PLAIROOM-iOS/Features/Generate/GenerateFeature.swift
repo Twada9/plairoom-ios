@@ -38,14 +38,25 @@ private struct GenerateResponse: Decodable {
 @Reducer
 struct GenerateFeature {
 
+    // MARK: - ContentStatus
+
+    enum ContentStatus: Equatable {
+        case pending
+        case generating
+        case completed
+        case failed
+    }
+
     // MARK: - State
 
     @ObservableState
     struct State: Equatable {
         let room: Room
         var promptText: String = ""
-        var isRequesting: Bool = false
-        var errorMessage: String? = nil
+        var contentStatus: ContentStatus = .pending
+        var failureReason: String? = nil
+        var showLoginAlert: Bool = false
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
 
     // MARK: - Action
@@ -54,6 +65,8 @@ struct GenerateFeature {
         case binding(BindingAction<State>)
         case submitButtonTapped
         case generateResponse(Result<String, Error>)
+        case loginButtonTapped
+        case dismissLoginAlert
         case delegate(Delegate)
 
         enum Delegate {
@@ -68,7 +81,7 @@ struct GenerateFeature {
 
     // MARK: - Body
 
-    var body: some ReducerOf<Self> {
+    var body: some Reducer<State, Action> {
         BindingReducer()
         Reduce { state, action in
             switch action {
@@ -78,12 +91,13 @@ struct GenerateFeature {
 
             case .submitButtonTapped:
                 guard !state.promptText.trimmingCharacters(in: .whitespaces).isEmpty else {
-                    state.errorMessage = "プロンプトを入力してください"
+                    state.contentStatus = .failed
+                    state.failureReason = "プロンプトを入力してください"
                     return .none
                 }
-                state.isRequesting = true
-                state.errorMessage = nil
-                let functionName = state.room.contentType == "image"
+                state.contentStatus = .generating
+                state.failureReason = nil
+                let functionName = state.room.contentType == .image
                     ? "generate-image"
                     : "generate-music"
                 let request = GenerateRequest(
@@ -101,28 +115,37 @@ struct GenerateFeature {
                 }
 
             case .generateResponse(.success(let contentId)):
-                state.isRequesting = false
+                state.contentStatus = .completed
                 let room = state.room
                 return .send(.delegate(.generationStarted(contentId: contentId, room: room)))
 
             case .generateResponse(.failure(let error)):
-                state.isRequesting = false
+                state.contentStatus = .failed
                 let supabaseError = SupabaseError.from(error)
                 switch supabaseError {
                 case .edgeFunctionError(let type, let message):
                     switch type {
                     case .usageLimitExceeded:
-                        state.errorMessage = "今月の生成回数上限に達しました"
+                        state.failureReason = "今月の生成回数上限に達しました"
                     case .unauthorized:
-                        state.errorMessage = "ログインが必要です"
+                        state.showLoginAlert = true
                     default:
-                        state.errorMessage = message
+                        state.failureReason = message
                     }
                 case .networkError:
-                    state.errorMessage = "ネットワークエラーが発生しました"
+                    state.failureReason = "ネットワークエラーが発生しました"
                 default:
-                    state.errorMessage = "生成に失敗しました。もう一度お試しください。"
+                    state.failureReason = "生成に失敗しました。もう一度お試しください。"
                 }
+                return .none
+
+            case .loginButtonTapped:
+                state.showLoginAlert = false
+                state.$showAuthViewTrigger.withLock { $0 = true }
+                return .none
+
+            case .dismissLoginAlert:
+                state.showLoginAlert = false
                 return .none
 
             case .delegate:

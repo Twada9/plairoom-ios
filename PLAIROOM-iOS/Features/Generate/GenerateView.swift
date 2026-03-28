@@ -20,7 +20,7 @@ struct GenerateView: View {
                     promptSection
 
                     // エラー表示
-                    if let msg = store.errorMessage {
+                    if let msg = store.failureReason {
                         Text(msg)
                             .font(.caption)
                             .foregroundStyle(.red)
@@ -32,23 +32,33 @@ struct GenerateView: View {
                         store.send(.submitButtonTapped)
                     } label: {
                         HStack {
-                            if store.isRequesting {
+                            if store.contentStatus == .generating {
                                 ProgressView().tint(.white)
                             }
-                            Text(store.isRequesting ? "生成中..." : "生成する")
+                            Text(store.contentStatus == .generating ? "生成中..." : "生成する")
                                 .fontWeight(.semibold)
                                 .frame(maxWidth: .infinity)
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(store.isRequesting)
+                    .disabled(store.contentStatus == .generating)
                     .controlSize(.large)
                 }
                 .padding(20)
             }
             .navigationTitle("AI生成")
             .navigationBarTitleDisplayMode(.inline)
-            .disabled(store.isRequesting)
+            .disabled(store.contentStatus == .generating)
+            .alert("ログインが必要です", isPresented: $store.showLoginAlert) {
+                Button("ログイン") {
+                    store.send(.loginButtonTapped)
+                }
+                Button("閉じる", role: .cancel) {
+                    store.send(.dismissLoginAlert)
+                }
+            } message: {
+                Text("この機能を使用するにはログインが必要です")
+            }
         }
     }
 
@@ -58,7 +68,7 @@ struct GenerateView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("ルーム").font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 10) {
-                Image(systemName: store.room.contentType == "image" ? "photo" : "music.note")
+                Image(systemName: store.room.contentType == .image ? "photo" : "music.note")
                     .foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(store.room.title).font(.headline)
@@ -115,7 +125,7 @@ struct GenerateView: View {
                     description: "AIで夏の風景を生成して競おう",
                     basePrompt: "summer landscape, photorealistic",
                     roomType: "battle",
-                    contentType: "image",
+                    contentType: .image,
                     createdAt: "2026-03-14T00:00:00Z"
                 )
             )
