@@ -43,7 +43,7 @@ struct AppFeature {
         /// 認証モーダル（@Presents で管理。nil のとき非表示、値があるとき sheet 表示）
         @Presents var auth: AuthFeature.State?
         
-        @Shared(.inMemory("authState")) var authState: AuthState = .standard
+        @Shared(.inMemory("authState")) var authState: AuthState = .guest
         /// アプリのどこからでも認証画面を開けるようにする共有値
         /// trueにしたら表示される
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
@@ -90,7 +90,7 @@ struct AppFeature {
                 state.$authState.withLock { $0 = state.isAuthenticated ? .standard : .guest }
                 state.$showAuthViewTrigger.withLock { $0 = false }
                 state.auth = nil
-                return .none
+                return .send(.settings(.onAppear))
                 
             case .auth(.presented(.delegate(.cancelled))):
                 // ゲストとしてホームへ継続（dismiss は @Presents が自動処理）
