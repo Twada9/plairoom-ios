@@ -12,26 +12,29 @@ struct RoomDetailView: View {
     @Bindable var store: StoreOf<RoomDetailFeature>
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch store.loadState {
-                case .loading:
-                    loadingView
-                case .loadFailed:
-                    errorView
-                case .idle:
-                    contentListView
-                }
+        Group {
+            switch store.loadState {
+            case .loading:
+                loadingView
+            case .loadFailed:
+                errorView
+            case .idle:
+                contentListView
             }
-            .navigationTitle(store.room.title)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        store.send(.generateButtonTapped)
-                    } label: {
-                        Label("生成", systemImage: "wand.and.stars")
-                    }
+        }
+        .navigationTitle(store.room.title)
+        .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(
+            item: $store.scope(state: \.generate, action: \.generate)
+        ) { generateStore in
+            GenerateView(store: generateStore)
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    store.send(.generateButtonTapped)
+                } label: {
+                    Label("生成", systemImage: "wand.and.stars")
                 }
             }
         }

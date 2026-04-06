@@ -47,6 +47,8 @@ struct RoomDetailFeature {
         var likedContentIds: Set<String> = []
         var likingContentIds: Set<String> = []
         var errorMessage: String? = nil
+        /// 生成画面への遷移
+        @Presents var generate: GenerateFeature.State?
     }
 
     // MARK: - Action
@@ -60,6 +62,7 @@ struct RoomDetailFeature {
         case likeButtonTapped(ContentItem)
         case likeResponse(Result<Void, Error>, contentId: String, isLiking: Bool)
         case generateButtonTapped
+        case generate(PresentationAction<GenerateFeature.Action>)
         case delegate(Delegate)
 
         enum Delegate: Equatable {
@@ -223,11 +226,18 @@ struct RoomDetailFeature {
                 return .none
 
             case .generateButtonTapped:
-                return .send(.delegate(.generateTapped(room: state.room)))
+                state.generate = GenerateFeature.State(room: state.room)
+                return .none
+
+            case .generate:
+                return .none
 
             case .delegate:
                 return .none
             }
+        }
+        .ifLet(\.$generate, action: \.generate) {
+            GenerateFeature()
         }
     }
 

@@ -10,55 +10,58 @@ struct GenerateView: View {
     @Bindable var store: StoreOf<GenerateFeature>
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // ルーム情報
-                    roomInfoSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // ルーム情報
+                roomInfoSection
 
-                    // プロンプト入力
-                    promptSection
+                // プロンプト入力
+                promptSection
 
-                    // エラー表示
-                    if let msg = store.failureReason {
-                        Text(msg)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .padding(.horizontal, 4)
-                    }
+                // 生成された画像
+                if let imageUrl = store.imageUrl, let url = URL(string: imageUrl) {
+                    generatedImageSection(url: url)
+                }
 
-                    // 送信ボタン
-                    Button {
-                        store.send(.submitButtonTapped)
-                    } label: {
-                        HStack {
-                            if store.contentStatus == .generating {
-                                ProgressView().tint(.white)
-                            }
-                            Text(store.contentStatus == .generating ? "生成中..." : "生成する")
-                                .fontWeight(.semibold)
-                                .frame(maxWidth: .infinity)
+                // エラー表示
+                if let msg = store.failureReason {
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(.horizontal, 4)
+                }
+
+                // 送信ボタン
+                Button {
+                    store.send(.submitButtonTapped)
+                } label: {
+                    HStack {
+                        if store.contentStatus == .generating {
+                            ProgressView().tint(.white)
                         }
+                        Text(store.contentStatus == .generating ? "生成中..." : "生成する")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(store.contentStatus == .generating)
-                    .controlSize(.large)
                 }
-                .padding(20)
+                .buttonStyle(.borderedProminent)
+                .disabled(store.contentStatus == .generating)
+                .controlSize(.large)
             }
-            .navigationTitle("AI生成")
-            .navigationBarTitleDisplayMode(.inline)
-            .disabled(store.contentStatus == .generating)
-            .alert("ログインが必要です", isPresented: $store.showLoginAlert) {
-                Button("ログイン") {
-                    store.send(.loginButtonTapped)
-                }
-                Button("閉じる", role: .cancel) {
-                    store.send(.dismissLoginAlert)
-                }
-            } message: {
-                Text("この機能を使用するにはログインが必要です")
+            .padding(20)
+        }
+        .navigationTitle("AI生成")
+        .navigationBarTitleDisplayMode(.inline)
+        .disabled(store.contentStatus == .generating)
+        .alert("ログインが必要です", isPresented: $store.showLoginAlert) {
+            Button("ログイン") {
+                store.send(.loginButtonTapped)
             }
+            Button("閉じる", role: .cancel) {
+                store.send(.dismissLoginAlert)
+            }
+        } message: {
+            Text("この機能を使用するにはログインが必要です")
         }
     }
 
@@ -91,24 +94,58 @@ struct GenerateView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
-            TextEditor(text: $store.promptText)
-                .frame(minHeight: 120)
-                .padding(10)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(.separator), lineWidth: 0.5)
-                )
-                .overlay(alignment: .topLeading) {
-                    if store.promptText.isEmpty {
-                        Text("ベースプロンプトに追加したい内容を入力...")
-                            .font(.body)
-                            .foregroundStyle(.secondary.opacity(0.6))
-                            .padding(EdgeInsets(top: 18, leading: 14, bottom: 0, trailing: 0))
-                            .allowsHitTesting(false)
-                    }
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $store.promptText)
+                    .frame(minHeight: 120)
+                    .scrollContentBackground(.hidden)
+                    .padding(10)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color(.separator), lineWidth: 0.5)
+                    )
+
+                if store.promptText.isEmpty {
+                    Text("ベースプロンプトに追加したい内容を入力...")
+                        .font(.body)
+                        .foregroundStyle(.secondary.opacity(0.6))
+                        .padding(EdgeInsets(top: 18, leading: 14, bottom: 0, trailing: 0))
+                        .allowsHitTesting(false)
                 }
+            }
+        }
+    }
+
+    private func generatedImageSection(url: URL) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("生成された画像").font(.caption).foregroundStyle(.secondary)
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 300)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                case .failure:
+                    VStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("画像の読み込みに失敗しました")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 300)
+                @unknown default:
+                    EmptyView()
+                }
+            }
         }
     }
 }

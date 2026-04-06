@@ -11,27 +11,6 @@
 
 import ComposableArchitecture
 import Foundation
-import Supabase
-
-// MARK: - Request / Response
-
-private struct GenerateRequest: Encodable {
-    let roomId: String
-    let prompt: String
-
-    enum CodingKeys: String, CodingKey {
-        case roomId = "room_id"
-        case prompt
-    }
-}
-
-private struct GenerateResponse: Decodable {
-    let contentId: String
-
-    enum CodingKeys: String, CodingKey {
-        case contentId = "content_id"
-    }
-}
 
 // MARK: - GenerateFeature
 
@@ -56,6 +35,7 @@ struct GenerateFeature {
         var contentStatus: ContentStatus = .pending
         var failureReason: String? = nil
         var showLoginAlert: Bool = false
+        var imageUrl: String? = nil
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
 
@@ -77,7 +57,7 @@ struct GenerateFeature {
 
     // MARK: - Dependencies
 
-    @Dependency(\.supabaseClient) var supabaseClient
+    @Dependency(\.generateRepository) var generateRepository
 
     // MARK: - Body
 
@@ -95,29 +75,32 @@ struct GenerateFeature {
                     state.failureReason = "プロンプトを入力してください"
                     return .none
                 }
+
                 state.contentStatus = .generating
                 state.failureReason = nil
-                let functionName = state.room.contentType == .image
-                    ? "generate-image"
-                    : "generate-music"
-                let request = GenerateRequest(
-                    roomId: state.room.id,
-                    prompt: state.promptText
-                )
-                return .run { [supabaseClient] send in
+                let roomId = state.room.id
+                let prompt = state.promptText
+                let contentType = state.room.contentType
+
+                return .run { [generateRepository] send in
                     await send(.generateResponse(
                         Result {
-                            let response: GenerateResponse = try await supabaseClient.functions
-                                .invoke(functionName, options: FunctionInvokeOptions(body: request))
-                            return response.contentId
+                            switch contentType {
+                            case .image:
+                                return try await generateRepository.generateImage(roomId, prompt)
+                            case .music:
+                                return try await generateRepository.generateMusic(roomId, prompt)
+                            }
                         }
                     ))
                 }
 
-            case .generateResponse(.success(let contentId)):
+            case .generateResponse(.success(let fileUrl)):
                 state.contentStatus = .completed
+                state.imageUrl = fileUrl
                 let room = state.room
-                return .send(.delegate(.generationStarted(contentId: contentId, room: room)))
+                // Note: contentId を返していないが、delegate では使わないため問題なし
+                return .send(.delegate(.generationStarted(contentId: fileUrl, room: room)))
 
             case .generateResponse(.failure(let error)):
                 state.contentStatus = .failed
@@ -128,6 +111,7 @@ struct GenerateFeature {
                     case .usageLimitExceeded:
                         state.failureReason = "今月の生成回数上限に達しました"
                     case .unauthorized:
+                        // TODO: ログイン時でも実行されると困るので念の為に制御を入れる
                         state.showLoginAlert = true
                     default:
                         state.failureReason = message
