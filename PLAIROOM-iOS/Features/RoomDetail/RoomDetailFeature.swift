@@ -27,6 +27,7 @@ struct RoomDetailFeature {
     nonisolated enum CancelID {
         case loadContents
         case likedStatus
+        case realtimeSubscription
     }
 
     // MARK: - LoadState
@@ -35,6 +36,14 @@ struct RoomDetailFeature {
         case loading
         case idle
         case loadFailed
+    }
+
+    // MARK: - Destination
+
+    @Reducer
+    enum Destination {
+        case generate(GenerateFeature)
+        case imageHistory(ImageHistoryFeature)
     }
 
     // MARK: - State
@@ -47,14 +56,20 @@ struct RoomDetailFeature {
         var likedContentIds: Set<String> = []
         var likingContentIds: Set<String> = []
         var errorMessage: String? = nil
-        /// 生成画面への遷移
-        @Presents var generate: GenerateFeature.State?
+
+        // Mini Player 用
+        var pendingImages: [ImageContent] = []
+        var isGenerating: Bool = false
+
+        /// 画面遷移先
+        @Presents var destination: Destination.State?
     }
 
     // MARK: - Action
 
     enum Action {
         case onAppear
+        case onDisappear
         case contentsResponse(Result<[ContentItem], Error>)
         case likedStatusResponse(Result<Set<String>, Error>)
         case retryTapped
@@ -62,13 +77,17 @@ struct RoomDetailFeature {
         case likeButtonTapped(ContentItem)
         case likeResponse(Result<Void, Error>, contentId: String, isLiking: Bool)
         case generateButtonTapped
-        case generate(PresentationAction<GenerateFeature.Action>)
+        case miniPlayerTapped
+        case realtimeUpdate(ImageContent)
+        case startRealtimeSubscription
+        case stopRealtimeSubscription
+        case destination(PresentationAction<Destination.Action>)
         case delegate(Delegate)
+    }
 
-        enum Delegate: Equatable {
-            /// 生成画面へ遷移（feature/generate で接続）
-            case generateTapped(room: Room)
-        }
+    enum Delegate: Equatable {
+        /// 生成画面へ遷移（feature/generate で接続）
+        case generateTapped(room: Room)
     }
 
     // MARK: - Dependencies
@@ -82,8 +101,16 @@ struct RoomDetailFeature {
             switch action {
 
             case .onAppear:
-                guard state.loadState != .idle else { return .none }
-                return loadContents(state: &state)
+                guard state.loadState != .idle else {
+                    return .send(.startRealtimeSubscription)
+                }
+                return .merge(
+                    loadContents(state: &state),
+                    .send(.startRealtimeSubscription)
+                )
+
+            case .onDisappear:
+                return .send(.stopRealtimeSubscription)
 
             case .contentsResponse(.success(let contents)):
                 state.contents = contents
@@ -226,19 +253,53 @@ struct RoomDetailFeature {
                 return .none
 
             case .generateButtonTapped:
-                state.generate = GenerateFeature.State(room: state.room)
+                state.destination = .generate(GenerateFeature.State(room: state.room))
                 return .none
 
-            case .generate:
+            case .miniPlayerTapped:
+                state.destination = .imageHistory(ImageHistoryFeature.State(items: state.pendingImages))
+                return .none
+
+            case .realtimeUpdate(let content):
+                // status が pending になったら pendingImages に追加
+                if content.status == .pending {
+                    state.isGenerating = false
+                    if !state.pendingImages.contains(where: { $0.id == content.id }) {
+                        state.pendingImages.append(content)
+                    }
+                }
+                return .none
+
+            case .startRealtimeSubscription:
+                let roomId = state.room.id
+                return .run { send in
+                    // TODO: Supabase Realtime の購読を実装
+                    // 現時点ではプレースホルダー
+                }
+                .cancellable(id: CancelID.realtimeSubscription, cancelInFlight: true)
+
+            case .stopRealtimeSubscription:
+                return .cancel(id: CancelID.realtimeSubscription)
+
+            case .destination(.presented(.generate(.delegate(.generationStarted(let roomId))))):
+                // 生成開始を受け取ったら isGenerating を true にして画面を閉じる
+                state.isGenerating = true
+                state.destination = nil
+                return .none
+
+            case .destination(.presented(.imageHistory(.delegate(.dismissed)))):
+                // 履歴シートを閉じる
+                state.destination = nil
+                return .none
+
+            case .destination:
                 return .none
 
             case .delegate:
                 return .none
             }
         }
-        .ifLet(\.$generate, action: \.generate) {
-            GenerateFeature()
-        }
+        .ifLet(\.$destination, action: \.destination)
     }
 
     // MARK: - Private
@@ -256,3 +317,6 @@ struct RoomDetailFeature {
         .cancellable(id: CancelID.loadContents, cancelInFlight: true)
     }
 }
+
+extension RoomDetailFeature.Destination.State: Equatable {}
+//extension RoomDetailFeature.Destination.Action: Equatable {}

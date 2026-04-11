@@ -48,11 +48,11 @@ struct GenerateFeature {
         case loginButtonTapped
         case dismissLoginAlert
         case delegate(Delegate)
+    }
 
-        enum Delegate {
-            /// 生成リクエスト受付済み → 結果画面へ（content_id を渡す）
-            case generationStarted(contentId: String, room: Room)
-        }
+    enum Delegate: Equatable {
+        /// 生成リクエスト開始 → RoomDetailFeature に通知
+        case generationStarted(roomId: String)
     }
 
     // MARK: - Dependencies
@@ -82,45 +82,24 @@ struct GenerateFeature {
                 let prompt = state.promptText
                 let contentType = state.room.contentType
 
+                // Fire-and-forget: 生成リクエストを投げたら即座に delegate に通知
                 return .run { [generateRepository] send in
-                    await send(.generateResponse(
-                        Result {
-                            switch contentType {
-                            case .image:
-                                return try await generateRepository.generateImage(roomId, prompt)
-                            case .music:
-                                return try await generateRepository.generateMusic(roomId, prompt)
-                            }
+                    // 生成開始を即座に通知
+                    await send(.delegate(.generationStarted(roomId: roomId)))
+
+                    // バックグラウンドで生成処理（結果は Realtime で受け取る）
+                    _ = await Result {
+                        switch contentType {
+                        case .image:
+                            return try await generateRepository.generateImage(roomId, prompt)
+                        case .music:
+                            return try await generateRepository.generateMusic(roomId, prompt)
                         }
-                    ))
-                }
-
-            case .generateResponse(.success(let fileUrl)):
-                state.contentStatus = .completed
-                state.imageUrl = fileUrl
-                let room = state.room
-                // Note: contentId を返していないが、delegate では使わないため問題なし
-                return .send(.delegate(.generationStarted(contentId: fileUrl, room: room)))
-
-            case .generateResponse(.failure(let error)):
-                state.contentStatus = .failed
-                let supabaseError = SupabaseError.from(error)
-                switch supabaseError {
-                case .edgeFunctionError(let type, let message):
-                    switch type {
-                    case .usageLimitExceeded:
-                        state.failureReason = "今月の生成回数上限に達しました"
-                    case .unauthorized:
-                        // TODO: ログイン時でも実行されると困るので念の為に制御を入れる
-                        state.showLoginAlert = true
-                    default:
-                        state.failureReason = message
                     }
-                case .networkError:
-                    state.failureReason = "ネットワークエラーが発生しました"
-                default:
-                    state.failureReason = "生成に失敗しました。もう一度お試しください。"
                 }
+
+            case .generateResponse:
+                // fire-and-forget なので response は無視
                 return .none
 
             case .loginButtonTapped:
