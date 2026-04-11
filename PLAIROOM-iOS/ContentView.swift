@@ -132,7 +132,8 @@ struct AppFeature {
 
 struct ContentView: View {
     @Bindable var store: StoreOf<AppFeature>
-    
+    @Namespace private var animationNamespace
+
     var body: some View {
         Group {
             if store.isLaunching {
@@ -172,6 +173,20 @@ struct ContentView: View {
                 .tabItem {
                     Label("設定", systemImage: "gearshape.fill")
                 }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tabBarMinimizeBehavior(.automatic)
+        .tabViewBottomAccessory(isEnabled: (store.roomList.roomDetail?.isGenerating ?? false) && store.roomList.roomDetail?.destination == nil) {
+            if let roomDetailState = store.roomList.roomDetail {
+                MiniPlayerView(
+                    pendingCount: roomDetailState.pendingImages.count,
+                    isGenerating: roomDetailState.isGenerating
+                ) {
+                    // RoomDetailに遷移してminiPlayerTappedを送る
+                    store.send(.roomList(.roomDetail(.presented(.miniPlayerTapped))))
+                }
+                .matchedTransitionSource(id: "miniPlayer", in: animationNamespace)
+            }
         }
     }
 }
