@@ -14,31 +14,21 @@ struct MiniPlayerView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                if isGenerating {
-                    // 生成中
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("生成中...")
+                leadingIcon
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(titleText)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } else if pendingCount > 0 {
-                    // 確認待ち
-                    Image(systemName: "photo.stack")
-                        .font(.title3)
-                        .foregroundStyle(.blue)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("生成完了")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Text("\(pendingCount)件の確認待ち")
+                        .fontWeight(.semibold)
+                    if let subtitle = subtitleText {
+                        Text(subtitle)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -49,8 +39,49 @@ struct MiniPlayerView: View {
         }
         .buttonStyle(.plain)
     }
+
+    @ViewBuilder
+    private var leadingIcon: some View {
+        if isGenerating {
+            ProgressView()
+                .controlSize(.small)
+        } else if pendingCount > 0 {
+            Image(systemName: "photo.stack")
+                .font(.title3)
+                .foregroundStyle(.blue)
+        } else {
+            Image(systemName: "photo")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var titleText: String {
+        if isGenerating {
+            return "生成中..."
+        } else if pendingCount > 0 {
+            return "生成完了"
+        } else {
+            return "生成履歴"
+        }
+    }
+
+    private var subtitleText: String? {
+        if pendingCount > 0 {
+            return "\(pendingCount)件の確認待ち"
+        }
+        return nil
+    }
 }
 
-#Preview {
+#Preview("生成中") {
+    MiniPlayerView(pendingCount: 0, isGenerating: true, onTap: {})
+}
+
+#Preview("確認待ちあり") {
+    MiniPlayerView(pendingCount: 2, isGenerating: false, onTap: {})
+}
+
+#Preview("両方") {
     MiniPlayerView(pendingCount: 1, isGenerating: true, onTap: {})
 }

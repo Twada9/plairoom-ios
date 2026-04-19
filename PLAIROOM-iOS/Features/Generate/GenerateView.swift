@@ -18,11 +18,6 @@ struct GenerateView: View {
                 // プロンプト入力
                 promptSection
 
-                // 生成された画像
-                if let imageUrl = store.imageUrl, let url = URL(string: imageUrl) {
-                    generatedImageSection(url: url)
-                }
-
                 // エラー表示
                 if let msg = store.failureReason {
                     Text(msg)
@@ -117,37 +112,6 @@ struct GenerateView: View {
         }
     }
 
-    private func generatedImageSection(url: URL) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("生成された画像").font(.caption).foregroundStyle(.secondary)
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .empty:
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 300)
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                case .failure:
-                    VStack {
-                        Image(systemName: "exclamationmark.triangle")
-                            .font(.largeTitle)
-                            .foregroundStyle(.secondary)
-                        Text("画像の読み込みに失敗しました")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 300)
-                @unknown default:
-                    EmptyView()
-                }
-            }
-        }
-    }
 }
 
 // MARK: - Preview

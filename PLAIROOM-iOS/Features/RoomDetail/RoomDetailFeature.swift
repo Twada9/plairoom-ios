@@ -27,7 +27,6 @@ struct RoomDetailFeature {
     nonisolated enum CancelID {
         case loadContents
         case likedStatus
-        case realtimeSubscription
     }
 
     // MARK: - LoadState
@@ -57,10 +56,6 @@ struct RoomDetailFeature {
         var likingContentIds: Set<String> = []
         var errorMessage: String? = nil
 
-        // Mini Player 用
-        var pendingImages: [ImageContent] = []
-        var isGenerating: Bool = false
-
         /// 画面遷移先
         @Presents var destination: Destination.State?
     }
@@ -69,7 +64,6 @@ struct RoomDetailFeature {
 
     enum Action {
         case onAppear
-        case onDisappear
         case contentsResponse(Result<[ContentItem], Error>)
         case likedStatusResponse(Result<Set<String>, Error>)
         case retryTapped
@@ -78,16 +72,13 @@ struct RoomDetailFeature {
         case likeResponse(Result<Void, Error>, contentId: String, isLiking: Bool)
         case generateButtonTapped
         case miniPlayerTapped
-        case realtimeUpdate(ImageContent)
-        case startRealtimeSubscription
-        case stopRealtimeSubscription
         case destination(PresentationAction<Destination.Action>)
         case delegate(Delegate)
     }
 
     enum Delegate: Equatable {
-        /// 生成画面へ遷移（feature/generate で接続）
-        case generateTapped(room: Room)
+        /// Generate 画面から上がってきた生成リクエストを親（AppFeature）へ中継
+        case generationRequested(roomId: String, contentType: ContentType, prompt: String)
     }
 
     // MARK: - Dependencies
@@ -102,15 +93,9 @@ struct RoomDetailFeature {
 
             case .onAppear:
                 guard state.loadState != .idle else {
-                    return .send(.startRealtimeSubscription)
+                    return .none
                 }
-                return .merge(
-                    loadContents(state: &state),
-                    .send(.startRealtimeSubscription)
-                )
-
-            case .onDisappear:
-                return .send(.stopRealtimeSubscription)
+                return loadContents(state: &state)
 
             case .contentsResponse(.success(let contents)):
                 state.contents = contents
@@ -257,35 +242,17 @@ struct RoomDetailFeature {
                 return .none
 
             case .miniPlayerTapped:
-                state.destination = .imageHistory(ImageHistoryFeature.State(items: state.pendingImages))
+                // TODO: 生成履歴シートを AppFeature 側から渡された items で開く
                 return .none
 
-            case .realtimeUpdate(let content):
-                // status が pending になったら pendingImages に追加
-                if content.status == .pending {
-                    state.isGenerating = false
-                    if !state.pendingImages.contains(where: { $0.id == content.id }) {
-                        state.pendingImages.append(content)
-                    }
-                }
-                return .none
-
-            case .startRealtimeSubscription:
-                let roomId = state.room.id
-                return .run { send in
-                    // TODO: Supabase Realtime の購読を実装
-                    // 現時点ではプレースホルダー
-                }
-                .cancellable(id: CancelID.realtimeSubscription, cancelInFlight: true)
-
-            case .stopRealtimeSubscription:
-                return .cancel(id: CancelID.realtimeSubscription)
-
-            case .destination(.presented(.generate(.delegate(.generationStarted(let roomId))))):
-                // 生成開始を受け取ったら isGenerating を true にして画面を閉じる
-                state.isGenerating = true
-//                state.destination = nil
-                return .none
+            case let .destination(.presented(.generate(.delegate(.generationRequested(roomId, contentType, prompt))))):
+                // Generate 画面を閉じて、AppFeature に生成リクエストを中継
+                state.destination = nil
+                return .send(.delegate(.generationRequested(
+                    roomId: roomId,
+                    contentType: contentType,
+                    prompt: prompt
+                )))
 
             case .destination(.presented(.imageHistory(.delegate(.dismissed)))):
                 // 履歴シートを閉じる
@@ -319,4 +286,3 @@ struct RoomDetailFeature {
 }
 
 extension RoomDetailFeature.Destination.State: Equatable {}
-//extension RoomDetailFeature.Destination.Action: Equatable {}

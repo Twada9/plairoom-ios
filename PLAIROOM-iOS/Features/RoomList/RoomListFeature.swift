@@ -53,6 +53,12 @@ struct RoomListFeature {
         case setAuthenticated(Bool)
         // ルーム詳細
         case roomDetail(PresentationAction<RoomDetailFeature.Action>)
+        case delegate(Delegate)
+    }
+
+    enum Delegate: Equatable {
+        /// 生成リクエストを AppFeature へ中継
+        case generationRequested(roomId: String, contentType: ContentType, prompt: String)
     }
 
     // MARK: - Dependencies
@@ -125,7 +131,17 @@ struct RoomListFeature {
             case .auth:
                 return .none
 
+            case let .roomDetail(.presented(.delegate(.generationRequested(roomId, contentType, prompt)))):
+                return .send(.delegate(.generationRequested(
+                    roomId: roomId,
+                    contentType: contentType,
+                    prompt: prompt
+                )))
+
             case .roomDetail:
+                return .none
+
+            case .delegate:
                 return .none
             }
         }

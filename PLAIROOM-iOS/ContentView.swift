@@ -12,6 +12,7 @@
 //     Unauthenticated ⇄ Authenticated
 
 import ComposableArchitecture
+import Supabase
 import SwiftUI
 
 // MARK: - AppFeature
@@ -23,13 +24,27 @@ struct AppFeature {
         case standard
         case premium
         case guest
-        
+
         var isAuthenticated: Bool {
             return .guest != self
         }
     }
+
+    // MARK: - CancelID
+
+    nonisolated enum CancelID: Hashable {
+        case generation(String)
+    }
+
+    // MARK: - Destination
+
+    @Reducer
+    enum Destination {
+        case imageHistory(ImageHistoryFeature)
+    }
+
     // MARK: - State
-    
+
     @ObservableState
     struct State: Equatable {
         /// 起動時の認証チェック完了フラグ
@@ -42,15 +57,21 @@ struct AppFeature {
         var settings: SettingsFeature.State = SettingsFeature.State()
         /// 認証モーダル（@Presents で管理。nil のとき非表示、値があるとき sheet 表示）
         @Presents var auth: AuthFeature.State?
-        
+
         @Shared(.inMemory("authState")) var authState: AuthState = .guest
         /// アプリのどこからでも認証画面を開けるようにする共有値
         /// trueにしたら表示される
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
+
+        /// アプリ全体で進行中の生成リクエスト
+        @Shared(.inMemory("ongoingGenerations")) var ongoingGenerations: IdentifiedArrayOf<OngoingGeneration> = []
+
+        /// MiniPlayer タップ時に表示する履歴シート
+        @Presents var destination: Destination.State?
     }
-    
+
     // MARK: - Action
-    
+
     enum Action {
         case onAppear
         case roomList(RoomListFeature.Action)
@@ -59,14 +80,26 @@ struct AppFeature {
         case authStateChanged(Bool)
         case showAuthView
         case onDismissAuthView
+
+        // 生成管理
+        case startGeneration(roomId: String, contentType: ContentType, prompt: String)
+        case retryGeneration(requestId: String)
+        case generationStatusChanged(requestId: String, status: OngoingGeneration.Status)
+        case dismissGeneration(requestId: String)
+        case miniPlayerTapped
+        case destination(PresentationAction<Destination.Action>)
     }
-    
+
     // MARK: - Dependencies
-    
+
     @Dependency(\.authRepository) var authRepository
-    
+    @Dependency(\.generateRepository) var generateRepository
+    @Dependency(\.generationTracker) var generationTracker
+    @Dependency(\.supabaseClient) var supabaseClient
+    @Dependency(\.uuid) var uuid
+
     // MARK: - Body
-    
+
     var body: some Reducer<State, Action> {
         Scope(state: \.roomList, action: \.roomList) {
             RoomListFeature()
@@ -76,7 +109,7 @@ struct AppFeature {
         }
         Reduce { state, action in
             switch action {
-                
+
             case .onAppear:
                 state.isLaunching = false
                 return .run { send in
@@ -84,22 +117,22 @@ struct AppFeature {
                         await send(.authStateChanged(isAuth))
                     }
                 }
-                
+
             case .auth(.presented(.delegate(.authSucceeded))):
                 state.isAuthenticated = true
                 state.$authState.withLock { $0 = state.isAuthenticated ? .standard : .guest }
                 state.$showAuthViewTrigger.withLock { $0 = false }
                 state.auth = nil
                 return .send(.settings(.onAppear))
-                
+
             case .auth(.presented(.delegate(.cancelled))):
                 // ゲストとしてホームへ継続（dismiss は @Presents が自動処理）
                 return .none
-                
+
             case let .authStateChanged(isAuth):
                 // TODO: プレミアムかどうかの判定も必要
                 state.$authState.withLock { $0 = isAuth ? .standard : .guest }
-                
+
                 if !state.authState.isAuthenticated {
                     // 未ログイン → ログインモーダル表示（§01: LoggedOut → ログインモーダル表示）
                     return .send(.showAuthView)
@@ -107,24 +140,147 @@ struct AppFeature {
                 return .none
             case .showAuthView:
                 state.auth = AuthFeature.State()
-                
+
                 return .none
             case .onDismissAuthView:
                 state.$showAuthViewTrigger.withLock { $0 = false }
                 return .none
             case .auth:
                 return .none
-                
+
+            case let .roomList(.delegate(.generationRequested(roomId, contentType, prompt))):
+                return .send(.startGeneration(roomId: roomId, contentType: contentType, prompt: prompt))
+
             case .roomList:
                 return .none
-                
+
             case .settings:
+                return .none
+
+            case let .startGeneration(roomId, contentType, prompt):
+                let requestId = uuid().uuidString.lowercased()
+                let generation = OngoingGeneration(
+                    id: requestId,
+                    roomId: roomId,
+                    contentType: contentType,
+                    prompt: prompt,
+                    status: .subscribing
+                )
+                state.$ongoingGenerations.withLock { $0[id: requestId] = generation }
+                return runGeneration(requestId: requestId, roomId: roomId, contentType: contentType, prompt: prompt)
+
+            case let .retryGeneration(requestId):
+                guard let existing = state.ongoingGenerations[id: requestId] else {
+                    return .none
+                }
+                state.$ongoingGenerations.withLock {
+                    $0[id: requestId]?.status = .subscribing
+                }
+                return runGeneration(
+                    requestId: requestId,
+                    roomId: existing.roomId,
+                    contentType: existing.contentType,
+                    prompt: existing.prompt
+                )
+
+            case let .generationStatusChanged(requestId, status):
+                state.$ongoingGenerations.withLock {
+                    $0[id: requestId]?.status = status
+                }
+                return .none
+
+            case let .dismissGeneration(requestId):
+                state.$ongoingGenerations.withLock {
+                    $0.remove(id: requestId)
+                }
+                return .cancel(id: CancelID.generation(requestId))
+
+            case .miniPlayerTapped:
+                let items = state.ongoingGenerations
+                    .compactMap { $0.asImageContent }
+                state.destination = .imageHistory(ImageHistoryFeature.State(items: items))
+                return .none
+
+            case .destination(.presented(.imageHistory(.delegate(.dismissed)))):
+                state.destination = nil
+                return .none
+
+            case .destination:
                 return .none
             }
         }
         .ifLet(\.$auth, action: \.auth) {
             AuthFeature()
         }
+        .ifLet(\.$destination, action: \.destination)
+    }
+
+    // MARK: - Private
+
+    /// Realtime 購読 + Edge Function 呼び出しを並行実行する Effect
+    private func runGeneration(
+        requestId: String,
+        roomId: String,
+        contentType: ContentType,
+        prompt: String
+    ) -> Effect<Action> {
+        .run { send in
+            // userId を取得
+            let userId: String
+            do {
+                let session = try await supabaseClient.auth.session
+                userId = session.user.id.uuidString.lowercased()
+            } catch {
+                await send(.generationStatusChanged(
+                    requestId: requestId,
+                    status: .failed(message: "認証セッションの取得に失敗しました")
+                ))
+                return
+            }
+
+            await withTaskGroup(of: Void.self) { group in
+                // 1. Realtime 購読タスク
+                group.addTask {
+                    for await update in generationTracker.track(userId, requestId) {
+                        switch update {
+                        case .subscribed:
+                            await send(.generationStatusChanged(
+                                requestId: requestId,
+                                status: .generating
+                            ))
+                        case let .completed(fileUrl, contentId):
+                            await send(.generationStatusChanged(
+                                requestId: requestId,
+                                status: .completed(fileUrl: fileUrl, contentId: contentId)
+                            ))
+                        case let .failed(message):
+                            await send(.generationStatusChanged(
+                                requestId: requestId,
+                                status: .failed(message: message)
+                            ))
+                        }
+                    }
+                }
+
+                // 2. Edge Function 呼び出しタスク（購読確立を少し待ってから投げる）
+                group.addTask {
+                    do {
+                        switch contentType {
+                        case .image:
+                            try await generateRepository.generateImage(roomId, prompt, userId, requestId)
+                        case .music:
+                            try await generateRepository.generateMusic(roomId, prompt, userId, requestId)
+                        }
+                    } catch {
+                        await send(.generationStatusChanged(
+                            requestId: requestId,
+                            status: .failed(message: SupabaseError.from(error).localizedDescription)
+                        ))
+                    }
+                }
+            }
+        }
+        .cancellable(id: CancelID.generation(requestId), cancelInFlight: true)
     }
 }
 
@@ -156,13 +312,26 @@ struct ContentView: View {
             }
         })
     }
-    
+
     private var splashView: some View {
         ProgressView()
             .scaleEffect(1.5)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
+    private var isMiniPlayerVisible: Bool {
+        let gens = store.ongoingGenerations
+        return !gens.isEmpty
+    }
+
+    private var pendingCount: Int {
+        store.ongoingGenerations.count(where: { $0.status.isCompleted })
+    }
+
+    private var isAnyGenerating: Bool {
+        store.ongoingGenerations.contains(where: { $0.status.isInFlight })
+    }
+
     private var mainView: some View {
         TabView {
             RoomListView(store: store.scope(state: \.roomList, action: \.roomList))
@@ -176,20 +345,24 @@ struct ContentView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.automatic)
-        .tabViewBottomAccessory(isEnabled: (store.roomList.roomDetail?.isGenerating ?? false) && store.roomList.roomDetail?.destination == nil) {
-            if let roomDetailState = store.roomList.roomDetail {
-                MiniPlayerView(
-                    pendingCount: roomDetailState.pendingImages.count,
-                    isGenerating: roomDetailState.isGenerating
-                ) {
-                    // RoomDetailに遷移してminiPlayerTappedを送る
-                    store.send(.roomList(.roomDetail(.presented(.miniPlayerTapped))))
-                }
-                .matchedTransitionSource(id: "miniPlayer", in: animationNamespace)
+        .tabViewBottomAccessory(isEnabled: isMiniPlayerVisible) {
+            MiniPlayerView(
+                pendingCount: pendingCount,
+                isGenerating: isAnyGenerating
+            ) {
+                store.send(.miniPlayerTapped)
             }
+            .matchedTransitionSource(id: "miniPlayer", in: animationNamespace)
+        }
+        .sheet(
+            item: $store.scope(state: \.destination?.imageHistory, action: \.destination.imageHistory)
+        ) { historyStore in
+            ImageHistoryView(store: historyStore)
         }
     }
 }
+
+extension AppFeature.Destination.State: Equatable {}
 
 // MARK: - Preview
 

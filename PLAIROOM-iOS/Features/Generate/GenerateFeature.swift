@@ -5,9 +5,8 @@
 // 状態遷移図 (state-transition.md §06) に準拠:
 //
 //   [*] → idle
-//   idle → requesting : 送信ボタンタップ（Edge Function 呼び出し）
-//   requesting → idle : 通信失敗 [AppError]
-//   requesting → [*]  : 通信成功 → delegate(.generationStarted)
+//   idle → requesting : 送信ボタンタップ
+//   requesting → [*]  : delegate(.generationRequested) → AppFeature が処理
 
 import ComposableArchitecture
 import Foundation
@@ -35,7 +34,6 @@ struct GenerateFeature {
         var contentStatus: ContentStatus = .pending
         var failureReason: String? = nil
         var showLoginAlert: Bool = false
-        var imageUrl: String? = nil
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
 
@@ -44,20 +42,15 @@ struct GenerateFeature {
     enum Action: BindableAction {
         case binding(BindingAction<State>)
         case submitButtonTapped
-        case generateResponse(Result<String, Error>)
         case loginButtonTapped
         case dismissLoginAlert
         case delegate(Delegate)
     }
 
     enum Delegate: Equatable {
-        /// 生成リクエスト開始 → RoomDetailFeature に通知
-        case generationStarted(roomId: String)
+        /// 生成リクエストを AppFeature に委譲
+        case generationRequested(roomId: String, contentType: ContentType, prompt: String)
     }
-
-    // MARK: - Dependencies
-
-    @Dependency(\.generateRepository) var generateRepository
 
     // MARK: - Body
 
@@ -70,7 +63,8 @@ struct GenerateFeature {
                 return .none
 
             case .submitButtonTapped:
-                guard !state.promptText.trimmingCharacters(in: .whitespaces).isEmpty else {
+                let trimmed = state.promptText.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.isEmpty else {
                     state.contentStatus = .failed
                     state.failureReason = "プロンプトを入力してください"
                     return .none
@@ -78,29 +72,11 @@ struct GenerateFeature {
 
                 state.contentStatus = .generating
                 state.failureReason = nil
-                let roomId = state.room.id
-                let prompt = state.promptText
-                let contentType = state.room.contentType
-
-                // Fire-and-forget: 生成リクエストを投げたら即座に delegate に通知
-                return .run { [generateRepository] send in
-                    // 生成開始を即座に通知
-                    await send(.delegate(.generationStarted(roomId: roomId)))
-
-                    // バックグラウンドで生成処理（結果は Realtime で受け取る）
-                    _ = await Result {
-                        switch contentType {
-                        case .image:
-                            return try await generateRepository.generateImage(roomId, prompt)
-                        case .music:
-                            return try await generateRepository.generateMusic(roomId, prompt)
-                        }
-                    }
-                }
-
-            case .generateResponse:
-                // fire-and-forget なので response は無視
-                return .none
+                return .send(.delegate(.generationRequested(
+                    roomId: state.room.id,
+                    contentType: state.room.contentType,
+                    prompt: trimmed
+                )))
 
             case .loginButtonTapped:
                 state.showLoginAlert = false
