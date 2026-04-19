@@ -284,7 +284,7 @@ struct RoomDetailFeature {
             case .destination(.presented(.generate(.delegate(.generationStarted(let roomId))))):
                 // 生成開始を受け取ったら isGenerating を true にして画面を閉じる
                 state.isGenerating = true
-                state.destination = nil
+//                state.destination = nil
                 return .none
 
             case .destination(.presented(.imageHistory(.delegate(.dismissed)))):

@@ -39,14 +39,17 @@ private enum SupabaseClientKey: DependencyKey {
                 "SUPABASE_PROJECT_REF または SUPABASE_ANON_KEY が Info.plist に設定されていません。"
             )
         }
+        let logger = OSLogSupabaseLogger()
         return Supabase.SupabaseClient(
             supabaseURL: url,
             supabaseKey: anonKey,
             options: SupabaseClientOptions(
-                auth: SupabaseClientOptions.AuthOptions(
-                    // v3 での正式動作に今から合わせる
-                    // https://github.com/supabase/supabase-swift/pull/822
-                    emitLocalSessionAsInitialSession: true
+                global: SupabaseClientOptions.GlobalOptions(
+                    logger: logger
+                ),
+                realtime: RealtimeClientOptions(
+                    logLevel: .info,
+                    logger: logger
                 )
             )
         )
@@ -55,22 +58,12 @@ private enum SupabaseClientKey: DependencyKey {
     /// テスト環境: ダミー URL で初期化（実際の通信は発生しない）
     static let testValue = Supabase.SupabaseClient(
         supabaseURL: URL(string: "https://test-project-ref.supabase.co")!,
-        supabaseKey: "test-anon-key",
-        options: SupabaseClientOptions(
-            auth: SupabaseClientOptions.AuthOptions(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
+        supabaseKey: "test-anon-key"
     )
 
     /// プレビュー環境
     static let previewValue = Supabase.SupabaseClient(
         supabaseURL: URL(string: "https://preview-project-ref.supabase.co")!,
-        supabaseKey: "preview-anon-key",
-        options: SupabaseClientOptions(
-            auth: SupabaseClientOptions.AuthOptions(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
+        supabaseKey: "preview-anon-key"
     )
 }
