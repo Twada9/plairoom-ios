@@ -185,11 +185,18 @@ struct AppFeature {
                 state.$ongoingGenerations.withLock {
                     $0[id: requestId]?.status = .subscribing
                 }
-                return runGeneration(
-                    requestId: requestId,
-                    roomId: existing.roomId,
-                    contentType: existing.contentType,
-                    prompt: existing.prompt
+                // 古い Effect を確実に停止してから再度走らせる。
+                // runGeneration 内の .cancellable(cancelInFlight:) だけでは
+                // onTermination 経由の購読解除が次の購読開始前に完了する保証がないため、
+                // ここで明示的に cancel → 新しい Effect の順に .concatenate する。
+                return .concatenate(
+                    .cancel(id: CancelID.generation(requestId)),
+                    runGeneration(
+                        requestId: requestId,
+                        roomId: existing.roomId,
+                        contentType: existing.contentType,
+                        prompt: existing.prompt
+                    )
                 )
 
             case let .generationStatusChanged(requestId, status):
