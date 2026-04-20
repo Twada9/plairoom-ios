@@ -43,13 +43,14 @@ private enum GenerationTrackerKey: DependencyKey {
         GenerationTracker(
             track: { userId, requestId in
                 AsyncStream<GenerationUpdate> { continuation in
-                    let task = Task {
-                        @Dependency(\.supabaseClient) var client: SupabaseClient
+                    @Dependency(\.supabaseClient) var client: SupabaseClient
 
-                        let channelName = "user:\(userId):\(requestId)"
-                        let channel = client.channel(channelName) {
-                            $0.isPrivate = true
-                        }
+                    let channelName = "user:\(userId):\(requestId)"
+                    let channel = client.channel(channelName) {
+                        $0.isPrivate = true
+                    }
+
+                    let task = Task {
                         let broadcastStream = channel.broadcastStream(event: "content_updated")
 
                         do {
@@ -82,12 +83,14 @@ private enum GenerationTrackerKey: DependencyKey {
                             }
                         }
 
-                        await channel.unsubscribe()
                         continuation.finish()
                     }
 
+                    // Stream 消費側が cancel / break / 正常終了 どの経路でも
+                    // 確実に購読を解除する（task 内の `unsubscribe` では正常完了以外でカバーできない）
                     continuation.onTermination = { _ in
                         task.cancel()
+                        Task { await channel.unsubscribe() }
                     }
                 }
             }

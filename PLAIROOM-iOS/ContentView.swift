@@ -36,6 +36,15 @@ struct AppFeature {
         case generation(String)
     }
 
+    // MARK: - GenerationTaskResult
+
+    /// `runGeneration` 内の TaskGroup で各子タスクの完了事由を識別するための値
+    nonisolated enum GenerationTaskResult: Sendable {
+        case trackerFinished
+        case edgeFunctionSucceeded
+        case edgeFunctionFailed
+    }
+
     // MARK: - Destination
 
     @Reducer
@@ -249,7 +258,7 @@ struct AppFeature {
                 return
             }
 
-            await withTaskGroup(of: Void.self) { group in
+            await withTaskGroup(of: GenerationTaskResult.self) { group in
                 // 1. Realtime 購読タスク
                 group.addTask {
                     for await update in generationTracker.track(userId, requestId) {
@@ -264,16 +273,19 @@ struct AppFeature {
                                 requestId: requestId,
                                 status: .completed(fileUrl: fileUrl, contentId: contentId)
                             ))
+                            return .trackerFinished
                         case let .failed(message):
                             await send(.generationStatusChanged(
                                 requestId: requestId,
                                 status: .failed(message: message)
                             ))
+                            return .trackerFinished
                         }
                     }
+                    return .trackerFinished
                 }
 
-                // 2. Edge Function 呼び出しタスク（購読確立を少し待ってから投げる）
+                // 2. Edge Function 呼び出しタスク
                 group.addTask {
                     do {
                         switch contentType {
@@ -282,11 +294,23 @@ struct AppFeature {
                         case .music:
                             try await generateRepository.generateMusic(roomId, prompt, userId, requestId)
                         }
+                        return .edgeFunctionSucceeded
                     } catch {
                         await send(.generationStatusChanged(
                             requestId: requestId,
                             status: .failed(message: SupabaseError.from(error).localizedDescription)
                         ))
+                        return .edgeFunctionFailed
+                    }
+                }
+
+                // どちらかの完了を待ち、残りの片方をキャンセル
+                // - Tracker が完了/失敗を通知 → EF タスクは不要（既に走ってたら終了を待つ）
+                // - EF が失敗 → Tracker は無限待ちするのでキャンセル必須
+                while let result = await group.next() {
+                    if result == .edgeFunctionFailed || result == .trackerFinished {
+                        group.cancelAll()
+                        break
                     }
                 }
             }
