@@ -370,6 +370,10 @@ struct ContentView: View {
         store.ongoingGenerations.count(where: { $0.status.isCompleted })
     }
 
+    private var failedCount: Int {
+        store.ongoingGenerations.count(where: { $0.status.isFailed })
+    }
+
     private var isAnyGenerating: Bool {
         store.ongoingGenerations.contains(where: { $0.status.isInFlight })
     }
@@ -390,6 +394,7 @@ struct ContentView: View {
         .tabViewBottomAccessory(isEnabled: isMiniPlayerVisible) {
             MiniPlayerView(
                 pendingCount: pendingCount,
+                failedCount: failedCount,
                 isGenerating: isAnyGenerating
             ) {
                 store.send(.miniPlayerTapped)
