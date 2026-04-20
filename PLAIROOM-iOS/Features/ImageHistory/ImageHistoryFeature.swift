@@ -40,6 +40,8 @@ struct ImageHistoryFeature {
 
     enum Delegate: Equatable {
         case dismissed
+        /// シート上で破棄/投稿された生成リクエストを親（AppFeature）へ通知
+        case generationDismissed(requestId: String)
     }
 
     // MARK: - Dependencies
@@ -84,18 +86,18 @@ struct ImageHistoryFeature {
                 }
 
             case .postSuccess(let id):
-                // 成功したら items から削除
+                // 成功したら items から削除し、親に生成リクエストの破棄を通知
                 state.items.removeAll { $0.id == id }
-                return .none
+                return .send(.delegate(.generationDismissed(requestId: id)))
 
             case .postFailure:
                 // TODO: エラーハンドリング
                 return .none
 
             case .discardSuccess(let id):
-                // 成功したら items から削除
+                // 成功したら items から削除し、親に生成リクエストの破棄を通知
                 state.items.removeAll { $0.id == id }
-                return .none
+                return .send(.delegate(.generationDismissed(requestId: id)))
 
             case .discardFailure:
                 // TODO: エラーハンドリング

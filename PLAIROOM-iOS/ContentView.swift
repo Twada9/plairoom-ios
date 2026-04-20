@@ -205,6 +205,17 @@ struct AppFeature {
                 state.destination = nil
                 return .none
 
+            case let .destination(.presented(.imageHistory(.delegate(.generationDismissed(contentId))))):
+                // ImageHistory から contentId で通知されるので requestId に逆引き
+                let requestId = state.ongoingGenerations.first(where: { gen in
+                    if case let .completed(_, cid) = gen.status { return cid == contentId }
+                    return false
+                })?.id
+                if let requestId {
+                    return .send(.dismissGeneration(requestId: requestId))
+                }
+                return .none
+
             case .destination:
                 return .none
             }
