@@ -212,9 +212,8 @@ struct AppFeature {
                 return .cancel(id: CancelID.generation(requestId))
 
             case .miniPlayerTapped:
-                let items = state.ongoingGenerations
-                    .compactMap { $0.asImageContent }
-                state.destination = .imageHistory(ImageHistoryFeature.State(items: items))
+                // items は ImageHistoryFeature.State 側で @Shared から算出される
+                state.destination = .imageHistory(ImageHistoryFeature.State())
                 return .none
 
             case .destination(.presented(.imageHistory(.delegate(.dismissed)))):

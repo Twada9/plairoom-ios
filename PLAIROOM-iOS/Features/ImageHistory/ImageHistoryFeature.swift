@@ -20,8 +20,17 @@ struct ImageHistoryFeature {
 
     @ObservableState
     struct State: Equatable {
-        var items: [ImageContent]
+        /// アプリ全体で共有される進行中の生成一覧。
+        /// items はこれから派生して算出するため、
+        /// シート表示中に新規完了が入れば自動で追加される。
+        @Shared(.inMemory("ongoingGenerations")) var ongoingGenerations: IdentifiedArrayOf<OngoingGeneration> = []
         var selectedTab: Tab = .image
+
+        /// 画面に表示するアイテム。完了済みの OngoingGeneration のみを
+        /// ImageContent に変換して返す。
+        var items: [ImageContent] {
+            ongoingGenerations.compactMap { $0.asImageContent }
+        }
     }
 
     // MARK: - Action
@@ -86,8 +95,8 @@ struct ImageHistoryFeature {
                 }
 
             case .postSuccess(let id):
-                // 成功したら items から削除し、親に生成リクエストの破棄を通知
-                state.items.removeAll { $0.id == id }
+                // items は派生プロパティなので、親に通知して
+                // ongoingGenerations 側から該当エントリを削除してもらう。
                 return .send(.delegate(.generationDismissed(requestId: id)))
 
             case .postFailure:
@@ -95,8 +104,6 @@ struct ImageHistoryFeature {
                 return .none
 
             case .discardSuccess(let id):
-                // 成功したら items から削除し、親に生成リクエストの破棄を通知
-                state.items.removeAll { $0.id == id }
                 return .send(.delegate(.generationDismissed(requestId: id)))
 
             case .discardFailure:
