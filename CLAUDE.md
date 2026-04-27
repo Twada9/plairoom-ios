@@ -76,3 +76,6 @@ xcodebuild test -project PLAIROOM-iOS.xcodeproj -scheme PLAIROOM-iOSTests
 xcodebuild test -project PLAIROOM-iOS.xcodeproj -scheme PLAIROOM-iOSUITests
 ```
 
+### Docs
+./docs/ADR
+./docs/design
