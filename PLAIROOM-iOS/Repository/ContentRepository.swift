@@ -10,7 +10,7 @@ import Supabase
 
 // MARK: - ContentType
 
-enum ContentType: String, Sendable {
+enum ContentType: String, Sendable, Codable {
     case image
     case music
 
@@ -18,14 +18,6 @@ enum ContentType: String, Sendable {
         switch self {
         case .image: return "image_contents"
         case .music: return "music_contents"
-        }
-    }
-
-    init(value: String) throws {
-        switch value {
-        case "image": self = .image
-        case "music": self = .music
-        default: throw ContentError.invalidContentType(value)
         }
     }
 }
@@ -58,6 +50,7 @@ private enum ContentRepositoryKey: DependencyKey {
         return ContentRepository(
             fetchContents: { roomId, contentType in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
+
                 let dtos: [ContentItemDTO] = try await client
                     .from(contentType.tableName)
                     .select("*,likes(count),profiles(name,avatar_url)")
@@ -65,6 +58,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .order("created_at", ascending: false)
                     .execute()
                     .value
+
                 return dtos.map { $0.toEntity() }
             },
             likeContent: { contentId, contentType in

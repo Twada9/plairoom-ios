@@ -24,40 +24,46 @@ extension DependencyValues {
 
 private enum SupabaseClientKey: DependencyKey {
     /// 本番環境: Info.plist から読み込んだ設定を使って SDK クライアントを生成
-    static var liveValue: Supabase.SupabaseClient {
-        let config = DependencyValues._current.supabaseConfig
+    /// NOTE: `static let` (格納プロパティ) にすることでシングルトンを保証する。
+    /// `static var` (計算プロパティ) にすると @Dependency を解決するたびに
+    /// 新しいインスタンスが生成されセッション（JWT）が共有されないため 401 が発生する。
+    static let liveValue: Supabase.SupabaseClient = {
+        guard
+            let projectRef = Bundle.main.infoDictionary?["SUPABASE_PROJECT_REF"] as? String,
+            !projectRef.isEmpty,
+            let anonKey = Bundle.main.infoDictionary?["SUPABASE_ANON_KEY"] as? String,
+            !anonKey.isEmpty,
+            let url = URL(string: "https://\(projectRef).supabase.co")
+        else {
+            fatalError(
+                "SUPABASE_PROJECT_REF または SUPABASE_ANON_KEY が Info.plist に設定されていません。"
+            )
+        }
+        let logger = OSLogSupabaseLogger()
         return Supabase.SupabaseClient(
-            supabaseURL: config.projectURL,
-            supabaseKey: config.anonKey,
+            supabaseURL: url,
+            supabaseKey: anonKey,
             options: SupabaseClientOptions(
-                auth: SupabaseClientOptions.AuthOptions(
-                    // v3 での正式動作に今から合わせる
-                    // https://github.com/supabase/supabase-swift/pull/822
-                    emitLocalSessionAsInitialSession: true
+                global: SupabaseClientOptions.GlobalOptions(
+                    logger: logger
+                ),
+                realtime: RealtimeClientOptions(
+                    logLevel: .info,
+                    logger: logger
                 )
             )
         )
-    }
+    }()
 
     /// テスト環境: ダミー URL で初期化（実際の通信は発生しない）
     static let testValue = Supabase.SupabaseClient(
         supabaseURL: URL(string: "https://test-project-ref.supabase.co")!,
-        supabaseKey: "test-anon-key",
-        options: SupabaseClientOptions(
-            auth: SupabaseClientOptions.AuthOptions(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
+        supabaseKey: "test-anon-key"
     )
 
     /// プレビュー環境
     static let previewValue = Supabase.SupabaseClient(
         supabaseURL: URL(string: "https://preview-project-ref.supabase.co")!,
-        supabaseKey: "preview-anon-key",
-        options: SupabaseClientOptions(
-            auth: SupabaseClientOptions.AuthOptions(
-                emitLocalSessionAsInitialSession: true
-            )
-        )
+        supabaseKey: "preview-anon-key"
     )
 }

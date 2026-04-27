@@ -6,7 +6,7 @@
 import Foundation
 
 /// image_contents / music_contents テーブルの Supabase レスポンス DTO
-struct ContentItemDTO: Decodable, Sendable {
+nonisolated struct ContentItemDTO: Decodable, Sendable {
     let id: String
     let userId: String
     let roomId: String
@@ -49,11 +49,11 @@ struct ContentItemDTO: Decodable, Sendable {
     }
 }
 
-struct LikeCountDTO: Decodable, Sendable {
+nonisolated struct LikeCountDTO: Decodable, Sendable {
     let count: Int
 }
 
-struct ProfileDTO: Decodable, Sendable {
+nonisolated struct ProfileDTO: Decodable, Sendable {
     let name: String?
     let avatarUrl: String?
 

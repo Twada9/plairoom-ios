@@ -6,7 +6,10 @@
 //
 
 import Foundation
+import OSLog
 import Supabase
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: "SupabaseError")
 
 /// Supabase API のエラー型
 enum SupabaseError: Error, Sendable {
@@ -60,13 +63,19 @@ struct SupabaseRESTErrorResponse: Decodable, Sendable {
     let hint: String?
 }
 
-/// Edge Function エラーレスポンス
+/// Edge Function エラーレスポンス（カスタム形式: {"error": {"type": "...", "message": "..."}}）
 struct EdgeFunctionErrorResponse: Decodable, Sendable {
     let error: EdgeFunctionErrorDetail
 }
 
 struct EdgeFunctionErrorDetail: Decodable, Sendable {
     let type: String
+    let message: String
+}
+
+/// Supabase リレー / Gateway エラーレスポンス（{"code": 401, "message": "Invalid JWT"} 形式）
+struct SupabaseRelayErrorResponse: Decodable, Sendable {
+    let code: Int
     let message: String
 }
 
@@ -87,11 +96,24 @@ extension SupabaseError {
         if let e = error as? FunctionsError {
             switch e {
             case .httpError(let code, let data):
-                // レスポンスボディに {"error": {"type": "...", "message": "..."}} が含まれる場合はパース
+                let rawBody = String(data: data, encoding: .utf8) ?? "(decode failed)"
+                logger.error("HTTP \(code, privacy: .public): \(rawBody, privacy: .public)")
+
+                // {"error": {"type": "...", "message": "..."}} 形式（Edge Function カスタムエラー）
                 if let edgeError = try? JSONDecoder().decode(EdgeFunctionErrorResponse.self, from: data) {
                     let errorType = EdgeFunctionErrorType(rawValue: edgeError.error.type) ?? .unknown
                     return .edgeFunctionError(type: errorType, message: edgeError.error.message)
                 }
+
+                // {"code": 401, "message": "..."} 形式（Supabase リレーエラー）
+                if let relayError = try? JSONDecoder().decode(SupabaseRelayErrorResponse.self, from: data) {
+                    // リレーエラーは unauthorized として扱う（401 = JWT invalid）
+                    if relayError.code == 401 {
+                        return .edgeFunctionError(type: .unauthorized, message: relayError.message)
+                    }
+                    return .invalidResponse(statusCode: relayError.code)
+                }
+
                 return .invalidResponse(statusCode: code)
             case .relayError:
                 return .networkError(message: e.localizedDescription)

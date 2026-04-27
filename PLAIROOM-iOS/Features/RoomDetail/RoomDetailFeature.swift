@@ -37,6 +37,14 @@ struct RoomDetailFeature {
         case loadFailed
     }
 
+    // MARK: - Destination
+
+    @Reducer
+    enum Destination {
+        case generate(GenerateFeature)
+        case imageHistory(ImageHistoryFeature)
+    }
+
     // MARK: - State
 
     @ObservableState
@@ -47,6 +55,9 @@ struct RoomDetailFeature {
         var likedContentIds: Set<String> = []
         var likingContentIds: Set<String> = []
         var errorMessage: String? = nil
+
+        /// 画面遷移先
+        @Presents var destination: Destination.State?
     }
 
     // MARK: - Action
@@ -60,12 +71,14 @@ struct RoomDetailFeature {
         case likeButtonTapped(ContentItem)
         case likeResponse(Result<Void, Error>, contentId: String, isLiking: Bool)
         case generateButtonTapped
+        case miniPlayerTapped
+        case destination(PresentationAction<Destination.Action>)
         case delegate(Delegate)
+    }
 
-        enum Delegate: Equatable {
-            /// 生成画面へ遷移（feature/generate で接続）
-            case generateTapped(room: Room)
-        }
+    enum Delegate: Equatable {
+        /// Generate 画面から上がってきた生成リクエストを親（AppFeature）へ中継
+        case generationRequested(roomId: String, contentType: ContentType, prompt: String)
     }
 
     // MARK: - Dependencies
@@ -79,7 +92,9 @@ struct RoomDetailFeature {
             switch action {
 
             case .onAppear:
-                guard state.loadState != .idle else { return .none }
+                guard state.loadState != .idle else {
+                    return .none
+                }
                 return loadContents(state: &state)
 
             case .contentsResponse(.success(let contents)):
@@ -223,12 +238,35 @@ struct RoomDetailFeature {
                 return .none
 
             case .generateButtonTapped:
-                return .send(.delegate(.generateTapped(room: state.room)))
+                state.destination = .generate(GenerateFeature.State(room: state.room))
+                return .none
+
+            case .miniPlayerTapped:
+                // TODO: 生成履歴シートを AppFeature 側から渡された items で開く
+                return .none
+
+            case let .destination(.presented(.generate(.delegate(.generationRequested(roomId, contentType, prompt))))):
+                // Generate 画面を閉じて、AppFeature に生成リクエストを中継
+                state.destination = nil
+                return .send(.delegate(.generationRequested(
+                    roomId: roomId,
+                    contentType: contentType,
+                    prompt: prompt
+                )))
+
+            case .destination(.presented(.imageHistory(.delegate(.dismissed)))):
+                // 履歴シートを閉じる
+                state.destination = nil
+                return .none
+
+            case .destination:
+                return .none
 
             case .delegate:
                 return .none
             }
         }
+        .ifLet(\.$destination, action: \.destination)
     }
 
     // MARK: - Private
@@ -246,3 +284,5 @@ struct RoomDetailFeature {
         .cancellable(id: CancelID.loadContents, cancelInFlight: true)
     }
 }
+
+extension RoomDetailFeature.Destination.State: Equatable {}

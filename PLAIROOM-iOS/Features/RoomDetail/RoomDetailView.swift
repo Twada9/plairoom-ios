@@ -10,28 +10,49 @@ import SwiftUI
 
 struct RoomDetailView: View {
     @Bindable var store: StoreOf<RoomDetailFeature>
+    @Namespace private var animationNamespace
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch store.loadState {
-                case .loading:
-                    loadingView
-                case .loadFailed:
-                    errorView
-                case .idle:
-                    contentListView
-                }
+        Group {
+            switch store.loadState {
+            case .loading:
+                loadingView
+            case .loadFailed:
+                errorView
+            case .idle:
+                contentListView
             }
-            .navigationTitle(store.room.title)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        store.send(.generateButtonTapped)
-                    } label: {
-                        Label("生成", systemImage: "wand.and.stars")
-                    }
+        }
+        .navigationTitle(store.room.title)
+        .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(
+            item: $store.scope(
+                state: \.destination?.generate,
+                action: \.destination.generate
+            )
+        ) { generateStore in
+            GenerateView(store: generateStore)
+        }
+        // TODO: ベストの表示方法を探す
+        //        .fullScreenCover(
+        .navigationDestination(
+            item: $store.scope(
+                state: \.destination?.imageHistory,
+                action: \.destination.imageHistory
+            )
+        ) { historyStore in
+            ImageHistoryView(store: historyStore)
+                .navigationTransition(.zoom(
+                    sourceID: "miniPlayer",
+                    in: animationNamespace
+                ))
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    store.send(.generateButtonTapped)
+                } label: {
+                    Label("生成", systemImage: "wand.and.stars")
                 }
             }
         }

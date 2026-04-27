@@ -662,13 +662,15 @@
 				kind = upToNextMajorVersion;
 				minimumVersion = 1.25.1;
 			};
+			traits = (
+			);
 		};
 		1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.1;
+				kind = exactVersion;
+				version = 2.33.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
