@@ -6,7 +6,10 @@
 //
 
 import Foundation
+import OSLog
 import Supabase
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: "SupabaseError")
 
 /// Supabase API のエラー型
 enum SupabaseError: Error, Sendable {
@@ -93,9 +96,8 @@ extension SupabaseError {
         if let e = error as? FunctionsError {
             switch e {
             case .httpError(let code, let data):
-                // DEBUG: 生のレスポンスボディをコンソールに出力
                 let rawBody = String(data: data, encoding: .utf8) ?? "(decode failed)"
-                print("🚨 [SupabaseError] HTTP \(code): \(rawBody)")
+                logger.error("HTTP \(code, privacy: .public): \(rawBody, privacy: .public)")
 
                 // {"error": {"type": "...", "message": "..."}} 形式（Edge Function カスタムエラー）
                 if let edgeError = try? JSONDecoder().decode(EdgeFunctionErrorResponse.self, from: data) {

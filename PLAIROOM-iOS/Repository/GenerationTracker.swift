@@ -9,7 +9,10 @@
 
 import Dependencies
 import Foundation
+import OSLog
 import Supabase
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "", category: "GenerationTracker")
 
 // MARK: - GenerationUpdate
 
@@ -55,17 +58,17 @@ private enum GenerationTrackerKey: DependencyKey {
 
                         do {
                             try await channel.subscribeWithError()
-                            print("📡 [GenerationTracker] Subscribed: \(channelName)")
+                            logger.info("Subscribed: \(channelName, privacy: .public)")
                             continuation.yield(.subscribed)
                         } catch {
-                            print("❌ [GenerationTracker] Subscribe failed: \(error)")
+                            logger.error("Subscribe failed: \(error, privacy: .public)")
                             continuation.yield(.failed(message: "購読に失敗しました: \(error.localizedDescription)"))
                             continuation.finish()
                             return
                         }
 
                         for await message in broadcastStream {
-                            print("📥 [GenerationTracker] Received: \(message)")
+                            logger.debug("Received broadcast: \(String(describing: message), privacy: .public)")
                             // broadcast message の実データは `payload` キーの中にネストされている
                             let inner: [String: AnyJSON]
                             if case let .object(obj) = message["payload"] ?? .null {
@@ -75,7 +78,7 @@ private enum GenerationTrackerKey: DependencyKey {
                             }
                             let fileUrl = inner["file_url"]?.stringValue
                             let contentId = inner["id"]?.stringValue
-                            print("📥 [GenerationTracker] fileUrl=\(fileUrl ?? "nil"), contentId=\(contentId ?? "nil")")
+                            logger.debug("fileUrl=\(fileUrl ?? "nil", privacy: .public), contentId=\(contentId ?? "nil", privacy: .public)")
 
                             if let fileUrl, let contentId {
                                 continuation.yield(.completed(fileUrl: fileUrl, contentId: contentId))

@@ -30,16 +30,18 @@ private enum RoomRepositoryKey: DependencyKey {
                     .order("created_at", ascending: false)
                     .execute()
                     .data
-                let dtos = try await JSONDecoder.snakeCaseDecoder.decode([RoomDTO].self, from: data)
+                let dtos = try JSONDecoder.snakeCaseDecoder.decode([RoomDTO].self, from: data)
                 return try dtos.map { dto in
-                    let contentType = try ContentType(rawValue: dto.contentType)
+                    guard let contentType = ContentType(rawValue: dto.contentType) else {
+                        throw ContentError.invalidContentType(dto.contentType)
+                    }
                     return Room(
                         id: dto.id,
                         title: dto.title,
                         description: dto.description,
                         basePrompt: dto.basePrompt,
                         roomType: dto.roomType,
-                        contentType: contentType!,
+                        contentType: contentType,
                         createdAt: dto.createdAt
                     )
                 }

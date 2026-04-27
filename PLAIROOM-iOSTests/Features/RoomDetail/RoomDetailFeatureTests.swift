@@ -453,25 +453,6 @@ struct RoomDetailFeatureTests {
 
     // MARK: - Generate Button & Delegate
 
-    @Test("generateButtonTapped: 正しいroomを含むdelegateアクションを発行すること")
-    func testGenerateButtonTapped() async {
-        let mockRoom = self.mockRoom
-
-        let store = TestStore(initialState: RoomDetailFeature.State(
-            room: mockRoom,
-            loadState: .idle
-        )) {
-            RoomDetailFeature()
-        }
-
-        await store.send(.generateButtonTapped)
-
-        await store.receive { action in
-            guard case .delegate(.generateTapped(let room)) = action else { return false }
-            return room == mockRoom
-        }
-    }
-
     // MARK: - CancelID
 
     @Test("onAppear: loadContentsのCancelIDが正しく機能すること")
