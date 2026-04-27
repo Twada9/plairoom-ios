@@ -12,6 +12,7 @@ struct OngoingGeneration: Equatable, Identifiable, Sendable {
     let roomId: String
     let contentType: ContentType
     let prompt: String
+    let createdAt: Date
     var status: Status
 }
 
@@ -49,7 +50,7 @@ extension OngoingGeneration {
             roomId: roomId,
             fileUrl: fileUrl,
             promptUsed: prompt,
-            createdAt: Date(),
+            createdAt: createdAt,
             status: .pending
         )
     }

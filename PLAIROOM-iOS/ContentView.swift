@@ -106,6 +106,7 @@ struct AppFeature {
     @Dependency(\.generationTracker) var generationTracker
     @Dependency(\.supabaseClient) var supabaseClient
     @Dependency(\.uuid) var uuid
+    @Dependency(\.date.now) var now
 
     // MARK: - Body
 
@@ -173,6 +174,7 @@ struct AppFeature {
                     roomId: roomId,
                     contentType: contentType,
                     prompt: prompt,
+                    createdAt: now,
                     status: .subscribing
                 )
                 state.$ongoingGenerations.withLock { $0[id: requestId] = generation }
