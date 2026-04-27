@@ -402,10 +402,11 @@ struct ContentView: View {
             }
             .matchedTransitionSource(id: "miniPlayer", in: animationNamespace)
         }
-        .sheet(
+        .fullScreenCover(
             item: $store.scope(state: \.destination?.imageHistory, action: \.destination.imageHistory)
         ) { historyStore in
             ImageHistoryView(store: historyStore)
+                .navigationTransition(.zoom(sourceID: "miniPlayer", in: animationNamespace))
         }
     }
 }

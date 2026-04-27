@@ -33,7 +33,6 @@ struct GenerateFeature {
         var promptText: String = ""
         var contentStatus: ContentStatus = .pending
         var failureReason: String? = nil
-        var showLoginAlert: Bool = false
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
 
@@ -79,12 +78,10 @@ struct GenerateFeature {
                 )))
 
             case .loginButtonTapped:
-                state.showLoginAlert = false
                 state.$showAuthViewTrigger.withLock { $0 = true }
                 return .none
 
             case .dismissLoginAlert:
-                state.showLoginAlert = false
                 return .none
 
             case .delegate:

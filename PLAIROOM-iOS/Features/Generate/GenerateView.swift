@@ -48,16 +48,6 @@ struct GenerateView: View {
         .navigationTitle("AI生成")
         .navigationBarTitleDisplayMode(.inline)
         .disabled(store.contentStatus == .generating)
-        .alert("ログインが必要です", isPresented: $store.showLoginAlert) {
-            Button("ログイン") {
-                store.send(.loginButtonTapped)
-            }
-            Button("閉じる", role: .cancel) {
-                store.send(.dismissLoginAlert)
-            }
-        } message: {
-            Text("この機能を使用するにはログインが必要です")
-        }
     }
 
     // MARK: - Sections
