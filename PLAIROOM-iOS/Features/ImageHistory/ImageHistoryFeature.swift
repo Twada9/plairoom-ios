@@ -25,6 +25,7 @@ struct ImageHistoryFeature {
         /// シート表示中に新規完了が入れば自動で追加される。
         @Shared(.inMemory("ongoingGenerations")) var ongoingGenerations: IdentifiedArrayOf<OngoingGeneration> = []
         var selectedTab: Tab = .image
+        var errorMessage: String? = nil
 
         /// 画面に表示するアイテム。完了済みの OngoingGeneration のみを
         /// ImageContent に変換して返す。
@@ -44,6 +45,7 @@ struct ImageHistoryFeature {
         case postFailure(id: String, String)
         case discardSuccess(id: String)
         case discardFailure(id: String, String)
+        case errorDismissed
         case delegate(Delegate)
     }
 
@@ -71,11 +73,14 @@ struct ImageHistoryFeature {
                 return .none
 
             case .postTapped(let id):
-                // TODO: status を "posted" に更新
+                guard let generation = state.ongoingGenerations.first(where: {
+                    guard case let .completed(_, contentId) = $0.status else { return false }
+                    return contentId == id
+                }) else { return .none }
+                let postContentType = generation.contentType
                 return .run { send in
                     do {
-                        // contentRepository で status 更新
-                        // try await contentRepository.updateContentStatus(id, .posted)
+                        try await contentRepository.patchStatus(id, postContentType, .completed)
                         await send(.postSuccess(id: id))
                     } catch {
                         await send(.postFailure(id: id, error.localizedDescription))
@@ -83,11 +88,14 @@ struct ImageHistoryFeature {
                 }
 
             case .discardTapped(let id):
-                // TODO: status を "discarded" に更新
+                guard let generation = state.ongoingGenerations.first(where: {
+                    guard case let .completed(_, contentId) = $0.status else { return false }
+                    return contentId == id
+                }) else { return .none }
+                let discardContentType = generation.contentType
                 return .run { send in
                     do {
-                        // contentRepository で status 更新
-                        // try await contentRepository.updateContentStatus(id, .discarded)
+                        try await contentRepository.patchStatus(id, discardContentType, .failed)
                         await send(.discardSuccess(id: id))
                     } catch {
                         await send(.discardFailure(id: id, error.localizedDescription))
@@ -99,15 +107,19 @@ struct ImageHistoryFeature {
                 // ongoingGenerations 側から該当エントリを削除してもらう。
                 return .send(.delegate(.generationDismissed(contentId: id)))
 
-            case .postFailure:
-                // TODO: エラーハンドリング
+            case .postFailure(_, let message):
+                state.errorMessage = message
                 return .none
 
             case .discardSuccess(let id):
                 return .send(.delegate(.generationDismissed(contentId: id)))
 
-            case .discardFailure:
-                // TODO: エラーハンドリング
+            case .discardFailure(_, let message):
+                state.errorMessage = message
+                return .none
+
+            case .errorDismissed:
+                state.errorMessage = nil
                 return .none
 
             case .delegate:

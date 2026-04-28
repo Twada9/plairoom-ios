@@ -30,6 +30,16 @@ struct ImageHistoryView: View {
             .navigationTitle("生成履歴")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { store.send(.onAppear) }
+            .alert("エラー", isPresented: Binding(
+                get: { store.errorMessage != nil },
+                set: { if !$0 { store.send(.errorDismissed) } }
+            )) {
+                Button("OK") {}
+            } message: {
+                if let message = store.errorMessage {
+                    Text(message)
+                }
+            }
         }
     }
 
