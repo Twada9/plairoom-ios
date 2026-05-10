@@ -26,6 +26,10 @@ struct ImageHistoryFeature {
         @Shared(.inMemory("ongoingGenerations")) var ongoingGenerations: IdentifiedArrayOf<OngoingGeneration> = []
         var selectedTab: Tab = .image
         var errorMessage: String? = nil
+        /// 投稿リクエスト送信中のコンテンツ id 集合
+        var postingIds: Set<String> = []
+        /// 破棄リクエスト送信中のコンテンツ id 集合
+        var discardingIds: Set<String> = []
 
         /// 画面に表示するアイテム。完了済みの OngoingGeneration のみを
         /// ImageContent に変換して返す。
@@ -73,10 +77,12 @@ struct ImageHistoryFeature {
                 return .none
 
             case .postTapped(let id):
+                guard !state.postingIds.contains(id), !state.discardingIds.contains(id) else { return .none }
                 guard let generation = state.ongoingGenerations.first(where: {
                     guard case let .completed(_, contentId) = $0.status else { return false }
                     return contentId == id
                 }) else { return .none }
+                state.postingIds.insert(id)
                 let postContentType = generation.contentType
                 return .run { send in
                     do {
@@ -88,10 +94,12 @@ struct ImageHistoryFeature {
                 }
 
             case .discardTapped(let id):
+                guard !state.postingIds.contains(id), !state.discardingIds.contains(id) else { return .none }
                 guard let generation = state.ongoingGenerations.first(where: {
                     guard case let .completed(_, contentId) = $0.status else { return false }
                     return contentId == id
                 }) else { return .none }
+                state.discardingIds.insert(id)
                 let discardContentType = generation.contentType
                 return .run { send in
                     do {
@@ -103,18 +111,22 @@ struct ImageHistoryFeature {
                 }
 
             case .postSuccess(let id):
+                state.postingIds.remove(id)
                 // items は派生プロパティなので、親に通知して
                 // ongoingGenerations 側から該当エントリを削除してもらう。
                 return .send(.delegate(.generationDismissed(contentId: id)))
 
-            case .postFailure(_, let message):
+            case .postFailure(let id, let message):
+                state.postingIds.remove(id)
                 state.errorMessage = message
                 return .none
 
             case .discardSuccess(let id):
+                state.discardingIds.remove(id)
                 return .send(.delegate(.generationDismissed(contentId: id)))
 
-            case .discardFailure(_, let message):
+            case .discardFailure(let id, let message):
+                state.discardingIds.remove(id)
                 state.errorMessage = message
                 return .none
 

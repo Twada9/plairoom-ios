@@ -11,37 +11,24 @@ struct ResultView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // コンテンツプレビュー
-                        previewSection
+            ScrollView {
+                VStack(spacing: 24) {
+                    // コンテンツプレビュー
+                    previewSection
 
-                        // エラー
-                        if let msg = store.errorMessage {
-                            Text(msg)
-                                .font(.caption)
-                                .foregroundStyle(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
-
-                        // アクションボタン
-                        actionButtons
+                    // エラー
+                    if let msg = store.errorMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
                     }
-                    .padding(20)
-                }
 
-                // ローディングオーバーレイ
-                if store.isRequesting {
-                    ZStack {
-                        Color.black.opacity(0.3).ignoresSafeArea()
-                        VStack(spacing: 12) {
-                            ProgressView().tint(.white).scaleEffect(1.5)
-                            Text("処理中...").foregroundStyle(.white).font(.subheadline)
-                        }
-                    }
+                    // アクションボタン
+                    actionButtons
                 }
+                .padding(20)
             }
             .navigationTitle("生成結果")
             .navigationBarTitleDisplayMode(.inline)
@@ -106,9 +93,15 @@ struct ResultView: View {
             Button {
                 store.send(.postButtonTapped)
             } label: {
-                Text("投稿する")
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
+                HStack {
+                    if store.requestingAction == .post {
+                        ProgressView().tint(.white)
+                    }
+                    Text("投稿する")
+                        .fontWeight(.semibold)
+                        .opacity(store.requestingAction == .post ? 0 : 1)
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
@@ -117,8 +110,14 @@ struct ResultView: View {
             Button {
                 store.send(.retryButtonTapped)
             } label: {
-                Text("やり直す")
-                    .frame(maxWidth: .infinity)
+                HStack {
+                    if store.requestingAction == .retry {
+                        ProgressView()
+                    }
+                    Text("やり直す")
+                        .opacity(store.requestingAction == .retry ? 0 : 1)
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .controlSize(.large)

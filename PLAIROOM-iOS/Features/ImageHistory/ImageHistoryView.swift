@@ -64,6 +64,8 @@ struct ImageHistoryView: View {
                 ForEach(store.items) { item in
                     ImageHistoryCard(
                         item: item,
+                        isPosting: store.postingIds.contains(item.id),
+                        isDiscarding: store.discardingIds.contains(item.id),
                         onPostTapped: { store.send(.postTapped(id: item.id)) },
                         onDiscardTapped: { store.send(.discardTapped(id: item.id)) }
                     )
@@ -79,8 +81,12 @@ struct ImageHistoryView: View {
 
 private struct ImageHistoryCard: View {
     let item: ImageContent
+    let isPosting: Bool
+    let isDiscarding: Bool
     let onPostTapped: () -> Void
     let onDiscardTapped: () -> Void
+
+    private var isRequesting: Bool { isPosting || isDiscarding }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -112,16 +118,30 @@ private struct ImageHistoryCard: View {
             if item.status == .pending {
                 HStack(spacing: 12) {
                     Button(action: onDiscardTapped) {
-                        Text("破棄")
-                            .frame(maxWidth: .infinity)
+                        HStack {
+                            if isDiscarding {
+                                ProgressView()
+                            }
+                            Text("破棄")
+                                .opacity(isDiscarding ? 0 : 1)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
+                    .disabled(isRequesting)
 
                     Button(action: onPostTapped) {
-                        Text("投稿する")
-                            .frame(maxWidth: .infinity)
+                        HStack {
+                            if isPosting {
+                                ProgressView().tint(.white)
+                            }
+                            Text("投稿する")
+                                .opacity(isPosting ? 0 : 1)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(isRequesting)
                 }
             }
         }
