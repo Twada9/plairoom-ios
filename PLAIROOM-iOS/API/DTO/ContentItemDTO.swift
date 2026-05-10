@@ -14,7 +14,6 @@ nonisolated struct ContentItemDTO: Decodable, Sendable {
     let promptUsed: String?
     let status: String
     let createdAt: String
-    let likes: [LikeCountDTO]?
     let profiles: ProfileDTO?
     /// music_contents のみ
     let duration: Int?
@@ -27,12 +26,11 @@ nonisolated struct ContentItemDTO: Decodable, Sendable {
         case promptUsed = "prompt_used"
         case status
         case createdAt = "created_at"
-        case likes
         case profiles
         case duration
     }
 
-    func toEntity() -> ContentItem {
+    func toEntity(likeCount: Int) -> ContentItem {
         ContentItem(
             id: id,
             userId: userId,
@@ -41,7 +39,7 @@ nonisolated struct ContentItemDTO: Decodable, Sendable {
             promptUsed: promptUsed,
             status: ContentStatus(rawValue: status) ?? .failed,
             createdAt: createdAt,
-            likeCount: likes?.first?.count ?? 0,
+            likeCount: likeCount,
             authorName: profiles?.name,
             authorAvatarUrl: profiles?.avatarUrl,
             duration: duration
@@ -49,8 +47,12 @@ nonisolated struct ContentItemDTO: Decodable, Sendable {
     }
 }
 
-nonisolated struct LikeCountDTO: Decodable, Sendable {
-    let count: Int
+nonisolated struct LikeContentIdDTO: Decodable, Sendable {
+    let contentId: String
+
+    enum CodingKeys: String, CodingKey {
+        case contentId = "content_id"
+    }
 }
 
 nonisolated struct ProfileDTO: Decodable, Sendable {

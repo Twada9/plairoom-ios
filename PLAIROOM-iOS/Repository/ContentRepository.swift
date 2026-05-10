@@ -53,13 +53,29 @@ private enum ContentRepositoryKey: DependencyKey {
 
                 let dtos: [ContentItemDTO] = try await client
                     .from(contentType.tableName)
-                    .select("*,likes(count),profiles(name,avatar_url)")
+                    .select("*,profiles(name,avatar_url)")
                     .eq("room_id", value: roomId)
                     .order("created_at", ascending: false)
                     .execute()
                     .value
 
-                return dtos.map { $0.toEntity() }
+                guard !dtos.isEmpty else { return [] }
+
+                // likes は content_id に FK が貼れないため埋め込み不可。
+                // 対象 id 群でまとめて取得し、クライアント側で集計する。
+                let likeRows: [LikeContentIdDTO] = try await client
+                    .from("likes")
+                    .select("content_id")
+                    .eq("content_type", value: contentType.rawValue)
+                    .in("content_id", values: dtos.map(\.id))
+                    .execute()
+                    .value
+
+                let countByContentId = likeRows.reduce(into: [String: Int]()) { acc, row in
+                    acc[row.contentId, default: 0] += 1
+                }
+
+                return dtos.map { $0.toEntity(likeCount: countByContentId[$0.id] ?? 0) }
             },
             likeContent: { contentId, contentType in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
