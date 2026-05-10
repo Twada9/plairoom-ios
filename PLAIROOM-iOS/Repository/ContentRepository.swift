@@ -43,6 +43,18 @@ struct ContentRepository: Sendable {
     var patchStatus: @Sendable (_ contentId: String, _ contentType: ContentType, _ status: ContentStatus) async throws -> Void
 }
 
+// MARK: - Edge Function DTOs
+
+private struct PatchContentStatusRequestDTO: Encodable {
+    let contentId: String
+    let contentType: String
+    let status: String
+}
+
+private struct PatchContentStatusResponseDTO: Decodable {
+    let success: Bool
+}
+
 // MARK: - DependencyKey
 
 private enum ContentRepositoryKey: DependencyKey {
@@ -55,6 +67,7 @@ private enum ContentRepositoryKey: DependencyKey {
                     .from(contentType.tableName)
                     .select("*,profiles(name,avatar_url)")
                     .eq("room_id", value: roomId)
+                    .eq("status", value: ContentStatus.completed.rawValue)
                     .order("created_at", ascending: false)
                     .execute()
                     .value
@@ -121,11 +134,20 @@ private enum ContentRepositoryKey: DependencyKey {
             },
             patchStatus: { contentId, contentType, status in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
-                try await client
-                    .from(contentType.tableName)
-                    .update(["status": status.rawValue])
-                    .eq("id", value: contentId)
-                    .execute()
+
+                // image_contents / music_contents は RLS で UPDATE が許可されていないため、
+                // service_role を持つ Edge Function 経由で status を更新する。
+                let requestDTO = PatchContentStatusRequestDTO(
+                    contentId: contentId,
+                    contentType: contentType.rawValue,
+                    status: status.rawValue
+                )
+                let requestData = try JSONEncoder.snakeCaseEncoder.encode(requestDTO)
+                let _: PatchContentStatusResponseDTO = try await client.functions.invoke(
+                    "patch-content-status",
+                    options: FunctionInvokeOptions(body: requestData),
+                    decoder: JSONDecoder.snakeCaseDecoder
+                )
             }
         )
     }
