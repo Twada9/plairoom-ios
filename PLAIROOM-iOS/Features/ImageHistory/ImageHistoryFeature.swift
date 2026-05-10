@@ -25,6 +25,11 @@ struct ImageHistoryFeature {
         /// シート表示中に新規完了が入れば自動で追加される。
         @Shared(.inMemory("ongoingGenerations")) var ongoingGenerations: IdentifiedArrayOf<OngoingGeneration> = []
         var selectedTab: Tab = .image
+        var errorMessage: String? = nil
+        /// 投稿リクエスト送信中のコンテンツ id 集合
+        var postingIds: Set<String> = []
+        /// 破棄リクエスト送信中のコンテンツ id 集合
+        var discardingIds: Set<String> = []
 
         /// 画面に表示するアイテム。完了済みの OngoingGeneration のみを
         /// ImageContent に変換して返す。
@@ -44,6 +49,7 @@ struct ImageHistoryFeature {
         case postFailure(id: String, String)
         case discardSuccess(id: String)
         case discardFailure(id: String, String)
+        case errorDismissed
         case delegate(Delegate)
     }
 
@@ -71,11 +77,16 @@ struct ImageHistoryFeature {
                 return .none
 
             case .postTapped(let id):
-                // TODO: status を "posted" に更新
+                guard !state.postingIds.contains(id), !state.discardingIds.contains(id) else { return .none }
+                guard let generation = state.ongoingGenerations.first(where: {
+                    guard case let .completed(_, contentId) = $0.status else { return false }
+                    return contentId == id
+                }) else { return .none }
+                state.postingIds.insert(id)
+                let postContentType = generation.contentType
                 return .run { send in
                     do {
-                        // contentRepository で status 更新
-                        // try await contentRepository.updateContentStatus(id, .posted)
+                        try await contentRepository.patchStatus(id, postContentType, .completed)
                         await send(.postSuccess(id: id))
                     } catch {
                         await send(.postFailure(id: id, error.localizedDescription))
@@ -83,11 +94,16 @@ struct ImageHistoryFeature {
                 }
 
             case .discardTapped(let id):
-                // TODO: status を "discarded" に更新
+                guard !state.postingIds.contains(id), !state.discardingIds.contains(id) else { return .none }
+                guard let generation = state.ongoingGenerations.first(where: {
+                    guard case let .completed(_, contentId) = $0.status else { return false }
+                    return contentId == id
+                }) else { return .none }
+                state.discardingIds.insert(id)
+                let discardContentType = generation.contentType
                 return .run { send in
                     do {
-                        // contentRepository で status 更新
-                        // try await contentRepository.updateContentStatus(id, .discarded)
+                        try await contentRepository.patchStatus(id, discardContentType, .failed)
                         await send(.discardSuccess(id: id))
                     } catch {
                         await send(.discardFailure(id: id, error.localizedDescription))
@@ -95,19 +111,27 @@ struct ImageHistoryFeature {
                 }
 
             case .postSuccess(let id):
+                state.postingIds.remove(id)
                 // items は派生プロパティなので、親に通知して
                 // ongoingGenerations 側から該当エントリを削除してもらう。
                 return .send(.delegate(.generationDismissed(contentId: id)))
 
-            case .postFailure:
-                // TODO: エラーハンドリング
+            case .postFailure(let id, let message):
+                state.postingIds.remove(id)
+                state.errorMessage = message
                 return .none
 
             case .discardSuccess(let id):
+                state.discardingIds.remove(id)
                 return .send(.delegate(.generationDismissed(contentId: id)))
 
-            case .discardFailure:
-                // TODO: エラーハンドリング
+            case .discardFailure(let id, let message):
+                state.discardingIds.remove(id)
+                state.errorMessage = message
+                return .none
+
+            case .errorDismissed:
+                state.errorMessage = nil
                 return .none
 
             case .delegate:

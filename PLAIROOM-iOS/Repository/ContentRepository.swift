@@ -43,6 +43,18 @@ struct ContentRepository: Sendable {
     var patchStatus: @Sendable (_ contentId: String, _ contentType: ContentType, _ status: ContentStatus) async throws -> Void
 }
 
+// MARK: - Edge Function DTOs
+
+private struct PatchContentStatusRequestDTO: Encodable {
+    let contentId: String
+    let contentType: String
+    let status: String
+}
+
+private struct PatchContentStatusResponseDTO: Decodable {
+    let success: Bool
+}
+
 // MARK: - DependencyKey
 
 private enum ContentRepositoryKey: DependencyKey {
@@ -53,13 +65,30 @@ private enum ContentRepositoryKey: DependencyKey {
 
                 let dtos: [ContentItemDTO] = try await client
                     .from(contentType.tableName)
-                    .select("*,likes(count),profiles(name,avatar_url)")
+                    .select("*,profiles(name,avatar_url)")
                     .eq("room_id", value: roomId)
+                    .eq("status", value: ContentStatus.completed.rawValue)
                     .order("created_at", ascending: false)
                     .execute()
                     .value
 
-                return dtos.map { $0.toEntity() }
+                guard !dtos.isEmpty else { return [] }
+
+                // likes は content_id に FK が貼れないため埋め込み不可。
+                // 対象 id 群でまとめて取得し、クライアント側で集計する。
+                let likeRows: [LikeContentIdDTO] = try await client
+                    .from("likes")
+                    .select("content_id")
+                    .eq("content_type", value: contentType.rawValue)
+                    .in("content_id", values: dtos.map(\.id))
+                    .execute()
+                    .value
+
+                let countByContentId = likeRows.reduce(into: [String: Int]()) { acc, row in
+                    acc[row.contentId, default: 0] += 1
+                }
+
+                return dtos.map { $0.toEntity(likeCount: countByContentId[$0.id] ?? 0) }
             },
             likeContent: { contentId, contentType in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
@@ -105,11 +134,20 @@ private enum ContentRepositoryKey: DependencyKey {
             },
             patchStatus: { contentId, contentType, status in
                 @Dependency(\.supabaseClient) var client: SupabaseClient
-                try await client
-                    .from(contentType.tableName)
-                    .update(["status": status.rawValue])
-                    .eq("id", value: contentId)
-                    .execute()
+
+                // image_contents / music_contents は RLS で UPDATE が許可されていないため、
+                // service_role を持つ Edge Function 経由で status を更新する。
+                let requestDTO = PatchContentStatusRequestDTO(
+                    contentId: contentId,
+                    contentType: contentType.rawValue,
+                    status: status.rawValue
+                )
+                let requestData = try JSONEncoder.snakeCaseEncoder.encode(requestDTO)
+                let _: PatchContentStatusResponseDTO = try await client.functions.invoke(
+                    "patch-content-status",
+                    options: FunctionInvokeOptions(body: requestData),
+                    decoder: JSONDecoder.snakeCaseDecoder
+                )
             }
         )
     }

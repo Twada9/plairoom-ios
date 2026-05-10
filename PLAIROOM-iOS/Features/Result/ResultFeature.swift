@@ -26,8 +26,11 @@ struct ResultFeature {
         let contentId: String
         let room: Room
         var content: ContentItem? = nil
-        var isRequesting: Bool = false
+        /// 進行中の操作。nil = idle / .post = 投稿中 / .retry = やり直し中
+        var requestingAction: Action.PostAction? = nil
         var errorMessage: String? = nil
+
+        var isRequesting: Bool { requestingAction != nil }
     }
 
     // MARK: - Action
@@ -49,7 +52,7 @@ struct ResultFeature {
             case retried(room: Room)
         }
 
-        enum PostAction { case post, retry }
+        enum PostAction: Equatable { case post, retry }
     }
 
     // MARK: - Dependencies
@@ -66,7 +69,8 @@ struct ResultFeature {
                 return .none
 
             case .postButtonTapped:
-                state.isRequesting = true
+                guard state.requestingAction == nil else { return .none }
+                state.requestingAction = .post
                 state.errorMessage = nil
                 let contentId = state.contentId
                 let contentType = state.room.contentType
@@ -78,7 +82,8 @@ struct ResultFeature {
                 }
 
             case .retryButtonTapped:
-                state.isRequesting = true
+                guard state.requestingAction == nil else { return .none }
+                state.requestingAction = .retry
                 state.errorMessage = nil
                 let contentId = state.contentId
                 let contentType = state.room.contentType
@@ -93,7 +98,7 @@ struct ResultFeature {
                 return .send(.delegate(.cancelled))
 
             case .patchResponse(.success, let postAction):
-                state.isRequesting = false
+                state.requestingAction = nil
                 switch postAction {
                 case .post:
                     return .send(.delegate(.posted))
@@ -103,7 +108,7 @@ struct ResultFeature {
                 }
 
             case .patchResponse(.failure(let error), _):
-                state.isRequesting = false
+                state.requestingAction = nil
                 state.errorMessage = SupabaseError.from(error).localizedDescription
                 return .none
 
