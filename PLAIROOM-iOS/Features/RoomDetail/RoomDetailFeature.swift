@@ -71,7 +71,6 @@ struct RoomDetailFeature {
         case likeButtonTapped(ContentItem)
         case likeResponse(Result<Void, Error>, contentId: String, isLiking: Bool)
         case generateButtonTapped
-        case miniPlayerTapped
         case destination(PresentationAction<Destination.Action>)
         case delegate(Delegate)
     }
@@ -239,10 +238,6 @@ struct RoomDetailFeature {
 
             case .generateButtonTapped:
                 state.destination = .generate(GenerateFeature.State(room: state.room))
-                return .none
-
-            case .miniPlayerTapped:
-                // TODO: 生成履歴シートを AppFeature 側から渡された items で開く
                 return .none
 
             case let .destination(.presented(.generate(.delegate(.generationRequested(roomId, contentType, prompt))))):
