@@ -16,6 +16,13 @@ struct UsageStatus: Equatable, Sendable, Decodable {
     let isPremium: Bool
     /// 今日あと何回リワード広告を視聴できるか（0〜3）
     let rewardRemaining: Int
+    init(used: Int, limit: Int, remaining: Int, isPremium: Bool, rewardRemaining: Int) {
+        self.used = used
+        self.limit = limit
+        self.remaining = remaining
+        self.isPremium = isPremium
+        self.rewardRemaining = rewardRemaining
+    }
 }
 
 // MARK: - GenerateRepository

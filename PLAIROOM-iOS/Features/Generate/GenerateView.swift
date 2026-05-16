@@ -16,8 +16,20 @@ struct GenerateView: View {
                 roomInfoSection
 
                 // 使用状況バナー（取得できた場合のみ表示）
-                if let usage = store.usageStatus, !usage.isPremium {
-                    usageBannerSection(usage: usage)
+                if let usage = store.usageStatus {
+                    if !usage.isPremium {
+                        usageBannerSection(usage: usage)
+                    }
+                } else {
+                    let usage = UsageStatus(used: 0, limit: 0, remaining: 5, isPremium: false, rewardRemaining: 1)
+                        usageBannerSection(usage: usage)
+                            .redacted(reason: .placeholder)
+                            .phaseAnimator([0.5, 1.0]) {content, opacity in
+                                content.opacity(opacity)
+                            } animation: { _ in
+                                .easeInOut(duration: 0.8)
+                            }
+                            .disabled(true)
                 }
 
                 // プロンプト入力
@@ -303,6 +315,29 @@ private struct CircularProgressView: View {
                         used: 19, limit: 19, remaining: 0,
                         isPremium: false, rewardRemaining: 0
                     )
+                )
+            ) {
+                GenerateFeature()
+            }
+        )
+    }
+}
+
+#Preview("ロード") {
+    NavigationStack {
+        GenerateView(
+            store: Store(
+                initialState: GenerateFeature.State(
+                    room: Room(
+                        id: "1",
+                        title: "夏の風景バトル",
+                        description: "AIで夏の風景を生成して競おう",
+                        basePrompt: "summer landscape, photorealistic",
+                        roomType: "battle",
+                        contentType: .image,
+                        createdAt: "2026-03-14T00:00:00Z"
+                    ),
+                    usageStatus: nil,
                 )
             ) {
                 GenerateFeature()
