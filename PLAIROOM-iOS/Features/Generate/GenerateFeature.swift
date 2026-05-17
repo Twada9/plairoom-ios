@@ -52,6 +52,8 @@ struct GenerateFeature {
         /// リワード広告視聴完了（AdMob コールバックから呼ぶ）
         case rewardEarned
         case grantRewardResponse(Result<UsageStatus, Error>)
+        case rewardCancelled
+
         case delegate(Delegate)
     }
 
@@ -63,6 +65,7 @@ struct GenerateFeature {
     // MARK: - Dependencies
 
     @Dependency(\.generateRepository) var generateRepository
+    @Dependency(\.rewardedAdClient) var rewardedAdClient
 
     // MARK: - Body
 
@@ -75,7 +78,8 @@ struct GenerateFeature {
                 return .none
 
             case .onAppear:
-                return .run { send in
+                return .run { [rewardedAdClient] send in
+                    await rewardedAdClient.load()
                     await send(.usageStatusResponse(
                         Result { try await generateRepository.checkUsageLimit() }
                     ))
@@ -114,7 +118,12 @@ struct GenerateFeature {
 
             case .rewardEarned:
                 state.isGrantingReward = true
-                return .run { send in
+                return .run { [rewardedAdClient, generateRepository] send in
+                    let earned = await rewardedAdClient.show()
+                    guard earned else {
+                        await send(.rewardCancelled)
+                        return
+                    }
                     await send(.grantRewardResponse(
                         Result { try await generateRepository.grantReward() }
                     ))
@@ -127,7 +136,12 @@ struct GenerateFeature {
 
             case .grantRewardResponse(.failure):
                 state.isGrantingReward = false
+                // ここで広告は見たけど付与されないということがあるので何か保存するようにして再トライできるようにする
                 state.failureReason = "リワードの付与に失敗しました。もう一度お試しください"
+                return .none
+
+            case .rewardCancelled:
+                state.isGrantingReward = false
                 return .none
 
             case .delegate:
