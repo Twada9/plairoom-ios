@@ -43,7 +43,7 @@ struct RoomListFeatureTests {
         #expect(state.loadState == .loading)
         #expect(state.rooms.isEmpty)
         #expect(state.errorMessage == nil)
-        #expect(state.selectedRoomID == nil)
+        #expect(state.roomDetail == nil)
     }
 
     // MARK: - onAppear Tests
@@ -302,8 +302,8 @@ struct RoomListFeatureTests {
 
     // MARK: - roomTapped Tests
 
-    @Test("roomTapped: selectedRoomIDがタップしたIDになること")
-    func testRoomTappedSetsSelectedRoomID() async {
+    @Test("roomTapped: roomDetail が選択ルームで初期化されること")
+    func testRoomTappedPresentsRoomDetail() async {
         let store = TestStore(initialState: RoomListFeature.State(
             loadState: .idle,
             rooms: mockRooms
@@ -314,29 +314,32 @@ struct RoomListFeatureTests {
         let tappedRoom = mockRooms[0]
 
         await store.send(.roomTapped(tappedRoom)) {
-            $0.selectedRoomID = tappedRoom.id
+            $0.roomDetail = RoomDetailFeature.State(room: tappedRoom)
         }
 
-        #expect(store.state.selectedRoomID == "room-1")
+        #expect(store.state.roomDetail?.room == tappedRoom)
     }
 
-    @Test("roomTapped: 異なるルームをタップすると selectedRoomID が更新されること")
-    func testRoomTappedUpdatesSelectedRoomID() async {
-        let store = TestStore(initialState: RoomListFeature.State(
+    @Test("roomTapped: 異なるルームをタップすると roomDetail が上書きされること")
+    func testRoomTappedReplacesRoomDetail() async {
+        let firstRoom = mockRooms[0]
+        let secondRoom = mockRooms[1]
+
+        var initialState = RoomListFeature.State(
             loadState: .idle,
-            rooms: mockRooms,
-            selectedRoomID: "room-1"
-        )) {
+            rooms: mockRooms
+        )
+        initialState.roomDetail = RoomDetailFeature.State(room: firstRoom)
+
+        let store = TestStore(initialState: initialState) {
             RoomListFeature()
         }
 
-        let secondRoom = mockRooms[1]
-
         await store.send(.roomTapped(secondRoom)) {
-            $0.selectedRoomID = secondRoom.id
+            $0.roomDetail = RoomDetailFeature.State(room: secondRoom)
         }
 
-        #expect(store.state.selectedRoomID == "room-2")
+        #expect(store.state.roomDetail?.room == secondRoom)
     }
 
     // MARK: - Effect Tests
