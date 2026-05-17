@@ -14,3 +14,7 @@ SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG
 // Info.plistから参照するように環境変数を埋め込む
 SUPABASE_PROJECT_REF = $(SUPABASE_PROJECT_REF)
 SUPABASE_ANON_KEY = $(SUPABASE_ANON_KEY)
+// AdMob (Debug は Google 公式のテスト ID を使う)
+// https://developers.google.com/admob/ios/test-ads
+GAD_APPLICATION_IDENTIFIER = ca-app-pub-3940256099942544~1458002511
+REWARDED_AD_UNIT_ID = ca-app-pub-3940256099942544/1712485313

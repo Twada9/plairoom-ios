@@ -33,6 +33,13 @@ private actor RewardedAdBox {
     private var rewardedAd: RewardedAd?
     private var isLoading = false
     var delegate: Delegate?
+    private let rewardedAdUnitID: String = {
+        guard let id = Bundle.main.object(forInfoDictionaryKey: "RewardedAdUnitID") as? String,
+              !id.isEmpty else {
+            fatalError("RewardedAdUnitID not set in Info.plist")
+        }
+        return id
+    }()
 
     func load() async {
         guard !isLoading, rewardedAd == nil else { return }
@@ -40,7 +47,7 @@ private actor RewardedAdBox {
         defer { isLoading = false }
         do {
             rewardedAd = try await RewardedAd.load(
-                with: "ca-app-pub-3940256099942544/1712485313",
+                with: rewardedAdUnitID,
                 request: Request()
             )
             print("[Ad] load success")

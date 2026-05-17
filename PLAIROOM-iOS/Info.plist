@@ -2,9 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3597606093191733~9695965145</string>
-	<key>SUPABASE_ANON_KEY</key>
+    <key>GADApplicationIdentifier</key>
+    <string>$(GAD_APPLICATION_IDENTIFIER)</string>
+    <key>RewardedAdUnitID</key>
+    <string>$(REWARDED_AD_UNIT_ID)</string>	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_PROJECT_REF</key>
 	<string>$(SUPABASE_PROJECT_REF)</string>
