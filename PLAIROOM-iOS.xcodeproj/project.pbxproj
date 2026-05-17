@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		1A95CAE22F65977A00E9B4EC /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 1A95CADD2F65977A00E9B4EC /* README.md */; };
 		1A95CAEE2F65A2BD00E9B4EC /* ComposableArchitecture in Frameworks */ = {isa = PBXBuildFile; productRef = 1A95CAED2F65A2BD00E9B4EC /* ComposableArchitecture */; };
+		1A98B2A42FB963DF001E4275 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 1A98B2A32FB963DF001E4275 /* GoogleMobileAds */; };
 		1AAE170F2F667B1C003241AB /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE170E2F667B1C003241AB /* Auth */; };
 		1AAE17112F667B1C003241AB /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17102F667B1C003241AB /* Functions */; };
 		1AAE17132F667B1C003241AB /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 1AAE17122F667B1C003241AB /* PostgREST */; };
@@ -85,6 +86,7 @@
 				1AAE17172F667B1C003241AB /* Storage in Frameworks */,
 				1AAE17132F667B1C003241AB /* PostgREST in Frameworks */,
 				1AAE17112F667B1C003241AB /* Functions in Frameworks */,
+				1A98B2A42FB963DF001E4275 /* GoogleMobileAds in Frameworks */,
 				1AAE170F2F667B1C003241AB /* Auth in Frameworks */,
 				1AAE17152F667B1C003241AB /* Realtime in Frameworks */,
 				1A95CAEE2F65A2BD00E9B4EC /* ComposableArchitecture in Frameworks */,
@@ -176,6 +178,7 @@
 				1AAE17142F667B1C003241AB /* Realtime */,
 				1AAE17162F667B1C003241AB /* Storage */,
 				1AAE17222F667F68003241AB /* Supabase */,
+				1A98B2A32FB963DF001E4275 /* GoogleMobileAds */,
 			);
 			productName = "PLAIROOM-iOS";
 			productReference = 1A4DBDA32F6568AC00557C76 /* PLAIROOM-iOS.app */;
@@ -262,6 +265,7 @@
 			packageReferences = (
 				1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */,
 				1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				1A98B2A22FB963DF001E4275 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1A4DBDA42F6568AC00557C76 /* Products */;
@@ -665,6 +669,14 @@
 			traits = (
 			);
 		};
+		1A98B2A22FB963DF001E4275 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.3.0;
+			};
+		};
 		1AAE170D2F667B1C003241AB /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
@@ -680,6 +692,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 1A95CAEC2F65A2BD00E9B4EC /* XCRemoteSwiftPackageReference "swift-composable-architecture" */;
 			productName = ComposableArchitecture;
+		};
+		1A98B2A32FB963DF001E4275 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1A98B2A22FB963DF001E4275 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 		1AAE170E2F667B1C003241AB /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
