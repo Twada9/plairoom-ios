@@ -118,6 +118,7 @@ private enum GenerateRepositoryKey: DependencyKey {
                     used: 0,
                     limit: dto.effectiveLimit,
                     remaining: dto.remaining,
+                    // TODO: アカウントのプレミアムができたら直す
                     isPremium: false,
                     rewardRemaining: dto.rewardRemaining
                 )
