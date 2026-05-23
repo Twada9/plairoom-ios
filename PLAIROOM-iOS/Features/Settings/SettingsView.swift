@@ -18,6 +18,7 @@ struct SettingsView: View {
                     planSection
                     linksSection
                     logoutSection
+                    deleteAccountSection
                 } else {
                     // ── ゲスト ────────────────────────────────
                     guestSection
@@ -47,6 +48,16 @@ struct SettingsView: View {
                 }
             } message: {
                 Text("ログアウトしますか？")
+            }
+            .sheet(
+                isPresented: Binding(
+                    get: { store.deleteAccountSheet != nil },
+                    set: { _ in }
+                )
+            ) {
+                if let confirmation = store.deleteAccountSheet {
+                    DeleteAccountSheetView(confirmation: confirmation, store: store)
+                }
             }
         }
         .onAppear { store.send(.onAppear) }
@@ -156,6 +167,119 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - 退会セクション
+
+    private var deleteAccountSection: some View {
+        Section {
+            Button(role: .destructive) {
+                store.send(.deleteAccountButtonTapped)
+            } label: {
+                HStack {
+                    Spacer()
+                    Text("退会する")
+                    Spacer()
+                }
+            }
+        } footer: {
+            Text("退会するとアカウントおよびすべてのデータが完全に削除されます。この操作は取り消せません。")
+        }
+    }
+}
+
+// MARK: - 退会確認シート
+
+private struct DeleteAccountSheetView: View {
+    let confirmation: SettingsFeature.DeleteAccountSheetState
+    let store: StoreOf<SettingsFeature>
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+
+                    // 警告
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label(
+                            "退会するとすべてのデータが完全に削除されます",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.headline)
+                        .foregroundStyle(.orange)
+
+                        ForEach(
+                            ["プロフィール情報", "投稿コンテンツ", "いいね・コメント", "AI利用ログ", "ストレージ上のファイル"],
+                            id: \.self
+                        ) { item in
+                            Label(item, systemImage: "trash")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Text("この操作は取り消せません。")
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                    }
+                    .padding()
+                    .background(Color(.secondarySystemBackground))
+                    .clipShape(.rect(cornerRadius: 12))
+
+                    // パスワード入力
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("確認のためパスワードを入力してください")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        SecureField("パスワード", text: Binding(
+                            get: { store.deleteAccountSheet?.password ?? "" },
+                            set: {
+                                store.send(
+                                    .deleteAccountSheet(.presented(.binding(.set(\.password, $0))))
+                                )
+                            }
+                        ))
+                        .textContentType(.password)
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(.rect(cornerRadius: 10))
+                    }
+
+                    if case .failed(let message) = confirmation.loadState {
+                        Text(message)
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("退会確認")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("キャンセル") {
+                        store.send(.deleteAccountSheet(.presented(.cancelTapped)))
+                    }
+                    .disabled(confirmation.loadState == .loading)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button {
+                        store.send(.deleteAccountSheet(.presented(.confirmTapped)))
+                    } label: {
+                        if confirmation.loadState == .loading {
+                            ProgressView()
+                        } else {
+                            Text("退会する")
+                                .foregroundStyle(.red)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                    .disabled(confirmation.loadState == .loading || confirmation.password.isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .interactiveDismissDisabled(confirmation.loadState == .loading)
     }
 }
 

@@ -22,6 +22,33 @@ struct SettingsFeature {
         case idle
         case loadFailed
     }
+
+    // MARK: - 退会確認シートの子 State
+
+    enum DeleteAccountLoadState: Equatable {
+        case idle
+        case loading
+        case failed(String)
+    }
+
+    @ObservableState
+    struct DeleteAccountSheetState: Equatable, Identifiable {
+        let id = UUID()
+        var password: String = ""
+        var loadState: DeleteAccountLoadState = .idle
+    }
+
+    @CasePathable
+    enum DeleteAccountSheetAction: BindableAction {
+        case binding(BindingAction<DeleteAccountSheetState>)
+        case cancelTapped
+        case confirmTapped
+        case response(Result<Void, Error>)
+
+//        static func == (lhs: DeleteAccountSheetAction, rhs: DeleteAccountSheetAction) -> Bool {
+//            false
+//        }
+    }
     
     // MARK: - State
 
@@ -33,6 +60,7 @@ struct SettingsFeature {
         var loadState: LoadState = .idle
         var errorMessage: String? = nil
         var showLogoutConfirmation: Bool = false
+        @Presents var deleteAccountSheet: DeleteAccountSheetState?
         @Shared(.inMemory("authState")) var authState: AppFeature.AuthState = .guest
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
     }
@@ -48,6 +76,8 @@ struct SettingsFeature {
         case logoutConfirmed
         case logoutCancelled
         case logoutResponse(Result<Void, Error>)
+        case deleteAccountButtonTapped
+        case deleteAccountSheet(PresentationAction<DeleteAccountSheetAction>)
     }
 
     // MARK: - Dependencies
@@ -105,9 +135,55 @@ struct SettingsFeature {
                 state.errorMessage = "エラーが発生しました。"
                 return .none
 
+            case .deleteAccountButtonTapped:
+                state.deleteAccountSheet = DeleteAccountSheetState()
+                return .none
+
+            case .deleteAccountSheet(.presented(.cancelTapped)):
+                state.deleteAccountSheet = nil
+                return .none
+
+            case .deleteAccountSheet(.presented(.confirmTapped)):
+                guard let password = state.deleteAccountSheet?.password, !password.isEmpty else {
+                    state.deleteAccountSheet?.loadState = .failed("パスワードを入力してください。")
+                    return .none
+                }
+                state.deleteAccountSheet?.password = ""
+                state.deleteAccountSheet?.loadState = .loading
+                return .run { send in
+                    await send(.deleteAccountSheet(.presented(.response(
+                        Result { try await authRepository.deleteAccount(password) }
+                    ))))
+                }
+
+            case .deleteAccountSheet(.presented(.response(.success))):
+                // signOut() により authStateChanged ストリームが発火 → AppFeature がゲスト状態へ遷移
+                state.deleteAccountSheet = nil
+                return .none
+
+            case let .deleteAccountSheet(.presented(.response(.failure(error)))):
+                let supabaseError = SupabaseError.from(error)
+                let message: String
+                if case .edgeFunctionError(let type, _) = supabaseError, type == .invalidCredentials {
+                    message = "パスワードが正しくありません。"
+                } else {
+                    message = "エラーが発生しました。時間をおいて再試行してください。"
+                }
+                state.deleteAccountSheet?.loadState = .failed(message)
+                return .none
+
+            case .deleteAccountSheet(.presented(.binding)):
+                return .none
+
+            case .deleteAccountSheet(.dismiss):
+                return .none
+
             case .binding:
                 return .none
             }
+        }
+        .ifLet(\.$deleteAccountSheet, action: \.deleteAccountSheet) {
+            BindingReducer()
         }
     }
 }

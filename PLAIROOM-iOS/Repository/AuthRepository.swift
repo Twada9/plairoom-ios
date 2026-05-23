@@ -20,6 +20,8 @@ struct AuthRepository: Sendable {
     var signUp: @Sendable (_ email: String, _ password: String, _ name: String) async throws -> Void
     /// ログアウト
     var signOut: @Sendable () async throws -> Void
+    /// アカウント削除（退会）。サーバー側データを全削除後にローカルセッションを破棄する
+    var deleteAccount: @Sendable (_ password: String) async throws -> Void
     /// 現在ログイン中のユーザー（未ログインなら nil）
     var currentUser: @Sendable () -> User?
     /// ログイン状態のストリーム
@@ -47,6 +49,29 @@ private enum AuthRepositoryKey: DependencyKey {
                 @Dependency(\.supabaseClient) var client: SupabaseClient
                 try await client.auth.signOut()
             },
+            deleteAccount: { password in
+                @Dependency(\.supabaseClient) var client: SupabaseClient
+                guard let email = client.auth.currentUser?.email else {
+                    throw SupabaseError.unauthorized
+                }
+                struct RequestBody: Encodable {
+                    let email: String
+                    let password: String
+                }
+                do {
+                    _ = try await client.functions.invoke(
+                        "delete-account",
+                        options: FunctionInvokeOptions(
+                            body: try JSONEncoder.snakeCaseEncoder.encode(
+                                RequestBody(email: email, password: password)
+                            )
+                        )
+                    )
+                } catch {
+                    throw SupabaseError.from(error)
+                }
+                try await client.auth.signOut()
+            },
             currentUser: {
                 @Dependency(\.supabaseClient) var client: SupabaseClient
                 return client.auth.currentUser
@@ -71,6 +96,7 @@ private enum AuthRepositoryKey: DependencyKey {
         signIn: { _, _ in },
         signUp: { _, _, _ in },
         signOut: {},
+        deleteAccount: { _ in },
         currentUser: { nil },
         authStateChanged: unimplemented()
     )
