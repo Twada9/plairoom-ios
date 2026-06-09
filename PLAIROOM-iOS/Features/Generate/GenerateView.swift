@@ -131,8 +131,6 @@ struct GenerateView: View {
                     rewardRemaining: usage.rewardRemaining,
                     isLoading: store.isGrantingReward
                 ) {
-                    // AdMob 実装後は広告視聴→完了コールバックで .rewardEarned を送る
-                    // 現在はモックとして直接付与
                     store.send(.rewardEarned)
                 }
             } else if usage.remaining <= 0 {

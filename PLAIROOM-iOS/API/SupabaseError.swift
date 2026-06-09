@@ -43,6 +43,9 @@ enum EdgeFunctionErrorType: String, Sendable {
     /// 認証エラー
     case unauthorized
 
+    /// 再認証失敗（退会時のパスワード不一致など）
+    case invalidCredentials
+
     /// サーバーエラー
     case serverError
 
