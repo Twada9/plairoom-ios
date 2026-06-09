@@ -38,6 +38,7 @@ struct GenerateFeature {
         /// リワード広告の視聴処理中フラグ
         var isGrantingReward: Bool = false
         @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
+        @Shared(.inMemory("authState")) var authState: AppFeature.AuthState = .guest
     }
 
     // MARK: - Action
@@ -94,6 +95,10 @@ struct GenerateFeature {
                 return .none
 
             case .submitButtonTapped:
+                guard state.authState.isAuthenticated else {
+                    state.$showAuthViewTrigger.withLock { $0 = true }
+                    return .none
+                }
                 let trimmed = state.promptText.trimmingCharacters(in: .whitespaces)
                 guard !trimmed.isEmpty else {
                     state.contentStatus = .failed

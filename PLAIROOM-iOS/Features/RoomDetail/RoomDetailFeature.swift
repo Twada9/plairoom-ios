@@ -56,6 +56,9 @@ struct RoomDetailFeature {
         var likingContentIds: Set<String> = []
         var errorMessage: String? = nil
 
+        @Shared(.inMemory("authState")) var authState: AppFeature.AuthState = .guest
+        @Shared(.inMemory("showAuthViewTrigger")) var showAuthViewTrigger: Bool = false
+
         /// 画面遷移先
         @Presents var destination: Destination.State?
     }
@@ -148,6 +151,10 @@ struct RoomDetailFeature {
                 return .none
 
             case .likeButtonTapped(let content):
+                guard state.authState.isAuthenticated else {
+                    state.$showAuthViewTrigger.withLock { $0 = true }
+                    return .none
+                }
                 // 通信中の場合は早期return
                 guard !state.likingContentIds.contains(content.id) else {
                     return .none
@@ -237,6 +244,10 @@ struct RoomDetailFeature {
                 return .none
 
             case .generateButtonTapped:
+                guard state.authState.isAuthenticated else {
+                    state.$showAuthViewTrigger.withLock { $0 = true }
+                    return .none
+                }
                 state.destination = .generate(GenerateFeature.State(room: state.room))
                 return .none
 
