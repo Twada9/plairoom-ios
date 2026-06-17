@@ -43,6 +43,7 @@ struct RoomDetailFeature {
     enum Destination {
         case generate(GenerateFeature)
         case imageHistory(ImageHistoryFeature)
+        case imageDetail(ImageDetailFeature)
     }
 
     // MARK: - State
@@ -73,6 +74,7 @@ struct RoomDetailFeature {
         case cancelErrorTapped
         case likeButtonTapped(ContentItem)
         case likeResponse(Result<Void, Error>, contentId: String, isLiking: Bool)
+        case contentTapped(ContentItem)
         case generateButtonTapped
         case destination(PresentationAction<Destination.Action>)
         case delegate(Delegate)
@@ -241,6 +243,11 @@ struct RoomDetailFeature {
                     }
                 }
                 state.errorMessage = SupabaseError.from(error).localizedDescription
+                return .none
+
+            case .contentTapped(let content):
+                guard content.fileUrl != nil else { return .none }
+                state.destination = .imageDetail(ImageDetailFeature.State(item: content))
                 return .none
 
             case .generateButtonTapped:

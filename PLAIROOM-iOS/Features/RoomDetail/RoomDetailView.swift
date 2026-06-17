@@ -47,6 +47,18 @@ struct RoomDetailView: View {
                     in: animationNamespace
                 ))
         }
+        .navigationDestination(
+            item: $store.scope(
+                state: \.destination?.imageDetail,
+                action: \.destination.imageDetail
+            )
+        ) { detailStore in
+            ImageDetailView(store: detailStore)
+                .navigationTransition(.zoom(
+                    sourceID: detailStore.item.id,
+                    in: animationNamespace
+                ))
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -123,7 +135,9 @@ struct RoomDetailView: View {
                                 isLiked: store.likedContentIds.contains(content.id),
                                 isLiking: store.likingContentIds.contains(content.id),
                                 contentType: store.room.contentType,
-                                onLikeTapped: { store.send(.likeButtonTapped(content)) }
+                                onLikeTapped: { store.send(.likeButtonTapped(content)) },
+                                onImageTapped: { store.send(.contentTapped(content)) },
+                                namespace: animationNamespace
                             )
                         }
                     }
@@ -145,6 +159,8 @@ private struct ContentCard: View {
     let isLiking: Bool
     let contentType: ContentType
     let onLikeTapped: () -> Void
+    let onImageTapped: (() -> Void)?
+    let namespace: Namespace.ID
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -202,6 +218,8 @@ private struct ContentCard: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
+                .matchedTransitionSource(id: content.id, in: namespace)
+                .onTapGesture { onImageTapped?() }
             } else {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color(.tertiarySystemGroupedBackground))
